@@ -248,7 +248,7 @@ export function normalizeProblemData(raw, fallbackProblemText = '') {
 }
 
 /**
- * Quét toàn bộ model văn bản khả dụng cho API Key hiện tại (mỗi model có hạn mức quota riêng)
+ * Quét toàn bộ model văn bản khả dụng cho API Key hiện tại (mỗi model có hạn mức quota & tải riêng)
  */
 async function discoverAllTextModels(apiKey) {
   try {
@@ -279,9 +279,9 @@ async function discoverAllTextModels(apiKey) {
       })
       .map((m) => m.name.replace(/^models\//, ''));
 
-    // Sắp xếp ưu tiên: flash-lite / flash mới nhất -> pro -> gemma
     return valid.sort((a, b) => {
       const score = (n) => {
+        if (n.includes('3.8-flash-lite')) return 102;
         if (n.includes('3.8-flash')) return 100;
         if (n.includes('3.0-flash') || n.includes('3-flash')) return 95;
         if (n.includes('flash-lite')) return 90;
@@ -298,7 +298,7 @@ async function discoverAllTextModels(apiKey) {
 }
 
 /**
- * Hàm lõi gọi Gemini: tự động xoay vòng qua các model có hạn mức riêng và tự chờ nếu chạm giới hạn 429
+ * Hàm lõi gọi Gemini: tự động xoay vòng qua các model dự phòng khi gặp quá tải (503) hoặc giới hạn lượt (429)
  */
 async function callGeminiJsonCore(parts, apiKey) {
   const candidateModels = [
@@ -311,7 +311,7 @@ async function callGeminiJsonCore(parts, apiKey) {
   ];
 
   let discoveredDone = false;
-  const zeroQuotaModels = new Set();
+  const overloadedModels = [];
   const rateLimitedModels = [];
   let lastDetail = '';
 
@@ -320,11 +320,7 @@ async function callGeminiJsonCore(parts, apiKey) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const effectiveParts = isGemma
-      ? [{ text: `${TEACHER_SYSTEM_PROMPT}
-
----
-
-` }, ...parts]
+      ? [{ text: `${TEACHER_SYSTEM_PROMPT}\n\n---\n\n` }, ...parts]
       : parts;
 
     const payload = {
@@ -337,11 +333,17 @@ async function callGeminiJsonCore(parts, apiKey) {
       }
     };
 
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let res;
+    try {
+      res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (netErr) {
+      lastDetail = netErr.message || 'Lỗi kết nối mạng';
+      return { status: 'overloaded', detail: lastDetail };
+    }
 
     if (!res.ok) {
       let detail = '';
@@ -354,15 +356,19 @@ async function callGeminiJsonCore(parts, apiKey) {
       lastDetail = detail;
 
       if (res.status === 404) {
-        zeroQuotaModels.add(modelName);
         return { status: 'skip', detail };
       }
 
+      // Máy chủ Google đang quá tải tạm thời (500 / 502 / 503 / 504) -> chuyển sang model khác ngay
+      if (res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) {
+        if (!overloadedModels.includes(modelName)) {
+          overloadedModels.push(modelName);
+        }
+        return { status: 'overloaded', detail };
+      }
+
       if (res.status === 429) {
-        // Nếu quota của model này bị đặt = 0 trên gói miễn phí thì bỏ qua luôn, chuyển model khác
-        if (detail.includes('limit: 0')) {
-          zeroQuotaModels.add(modelName);
-        } else if (!rateLimitedModels.includes(modelName)) {
+        if (!detail.includes('limit: 0') && !rateLimitedModels.includes(modelName)) {
           rateLimitedModels.push(modelName);
         }
         return { status: 'rate_limit', detail };
@@ -372,11 +378,10 @@ async function callGeminiJsonCore(parts, apiKey) {
         if (detail.toLowerCase().includes('api key')) {
           throw new Error(`API Key không hợp lệ hoặc bị khóa (${res.status}): ${detail}`);
         }
-        // Lỗi tham số của riêng model này -> thử model kế tiếp
         return { status: 'skip', detail };
       }
 
-      throw new Error(`Lỗi máy chủ Gemini (HTTP ${res.status}): ${detail}`);
+      return { status: 'skip', detail };
     }
 
     const data = await res.json();
@@ -393,7 +398,7 @@ async function callGeminiJsonCore(parts, apiKey) {
     return { status: 'ok', parsed };
   };
 
-  // Vòng 1: Thử lần lượt từng model (mỗi model có hạn mức quota riêng)
+  // Vòng 1: Thử tuần tự qua từng model khả dụng
   for (let i = 0; i < candidateModels.length; i++) {
     const modelName = candidateModels[i];
     const outcome = await trySingleModel(modelName);
@@ -401,7 +406,7 @@ async function callGeminiJsonCore(parts, apiKey) {
       return outcome.parsed;
     }
 
-    // Quét thêm toàn bộ model khả dụng từ API Key nếu model đầu gặp 404 hoặc 429
+    // Quét thêm toàn bộ danh sách model thực tế của API Key ngay khi gặp lỗi đầu tiên
     if (!discoveredDone) {
       discoveredDone = true;
       const discovered = await discoverAllTextModels(apiKey);
@@ -413,7 +418,18 @@ async function callGeminiJsonCore(parts, apiKey) {
     }
   }
 
-  // Vòng 2: Nếu có model bị giới hạn tốc độ tạm thời (không phải limit: 0), tự động đợi 15 giây rồi thử lại 1 lần
+  // Vòng 2: Nếu có model bị quá tải tạm thời (503), đợi 4 giây rồi thử lại
+  if (overloadedModels.length > 0) {
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    for (const modelName of overloadedModels.slice(0, 2)) {
+      const retryOutcome = await trySingleModel(modelName);
+      if (retryOutcome.status === 'ok') {
+        return retryOutcome.parsed;
+      }
+    }
+  }
+
+  // Vòng 3: Nếu có model bị giới hạn tốc độ (429), đợi 15 giây rồi thử lại
   if (rateLimitedModels.length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 15000));
     const retryOutcome = await trySingleModel(rateLimitedModels[0]);
@@ -422,8 +438,14 @@ async function callGeminiJsonCore(parts, apiKey) {
     }
   }
 
+  if (overloadedModels.length > 0) {
+    throw new Error(
+      `Máy chủ Google Gemini đang quá tải tạm thời (503 High Demand) trên tất cả các model. Thầy vui lòng đợi khoảng 15–30 giây rồi bấm thử lại nhé!`
+    );
+  }
+
   throw new Error(
-    `Tất cả các model Gemini trên API Key này đều đang chạm giới hạn lượt gọi (429). Vui lòng đợi khoảng 30–60 giây rồi bấm thử lại.${
+    `Các model Gemini trên API Key này đang chạm giới hạn lượt gọi (429). Vui lòng đợi khoảng 30–60 giây rồi bấm thử lại.${
       lastDetail ? ` (Chi tiết: ${lastDetail.slice(0, 140)})` : ''
     }`
   );
@@ -445,9 +467,7 @@ export async function generateGeometryAndSolution({ problemText, imageAttachment
 
   const trimmed = (problemText || '').trim();
   const promptText = trimmed
-    ? `Hãy phân tích đề bài hình học THCS sau (kết hợp hình ảnh đính kèm nếu có), tạo tọa độ hình vẽ 2D chuẩn xác từng bước, tóm tắt GT-KL và viết lời giải chi tiết từng dòng:
-
-"${trimmed}"`
+    ? `Hãy phân tích đề bài hình học THCS sau (kết hợp hình ảnh đính kèm nếu có), tạo tọa độ hình vẽ 2D chuẩn xác từng bước, tóm tắt GT-KL và viết lời giải chi tiết từng dòng:\n\n"${trimmed}"`
     : 'Hãy đọc đề bài và hình vẽ trong ảnh đính kèm, trích xuất đầy đủ đề bài, tạo tọa độ hình vẽ 2D chuẩn xác từng bước, tóm tắt GT-KL và viết lời giải chi tiết từng dòng.';
 
   parts.push({ text: promptText });
@@ -556,9 +576,7 @@ export async function generateStepAudioTTS({ text, apiKey, signal, onCooldownTic
     throw new Error('Nội dung thuyết minh trống.');
   }
 
-  const prompt = `Hãy đóng vai cô giáo dạy Toán THCS giọng nữ chuẩn miền Bắc (Hà Nội), dịu dàng, rõ ràng, truyền cảm, đọc lời giảng bài toán hình học sau cho học sinh hiểu bài:
-
-"${naturalSpeech}"`;
+  const prompt = `Hãy đóng vai cô giáo dạy Toán THCS giọng nữ chuẩn miền Bắc (Hà Nội), dịu dàng, rõ ràng, truyền cảm, đọc lời giảng bài toán hình học sau cho học sinh hiểu bài:\n\n"${naturalSpeech}"`;
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
@@ -586,6 +604,19 @@ export async function generateStepAudioTTS({ text, apiKey, signal, onCooldownTic
 
     if (res.status === 400 || res.status === 403) {
       throw new Error('Gemini API Key không hợp lệ hoặc không có quyền dùng TTS.');
+    }
+
+    if (res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) {
+      if (attempt < 3) {
+        for (let sec = 5; sec >= 1; sec--) {
+          if (signal?.aborted) throw new Error('ABORTED');
+          onCooldownTick?.(sec);
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        onCooldownTick?.(0);
+        continue;
+      }
+      throw new Error('Máy chủ tạo âm thanh đang quá tải tạm thời (503). Vui lòng thử lại sau ít giây.');
     }
 
     if (res.status === 429) {
