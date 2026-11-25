@@ -23,7 +23,6 @@ import {
 import {
   generateGeometryAndSolution,
   refineDraftProblemWithChat,
-  generateBatchLessonAudioTTS,
   generateStepAudioTTS
 } from '../services/geminiService.js';
 import {
@@ -623,23 +622,26 @@ export default function DraftStudioDrawer({
         setDraftAudioMap(nextMap);
         showToast(`Đã tạo xong âm thanh bước ${singleStepIndex + 1}!`);
       } else {
-        setAudioProgressText(`Đang tạo gộp giọng đọc cho cả ${allSteps.length} bước trong 1 lượt API...`);
-        const batchSegments = await generateBatchLessonAudioTTS({
-          steps: allSteps,
-          apiKey: geminiApiKey.trim(),
-          onCooldownTick: (sec) => {
-            if (sec > 0) {
-              setAudioProgressText(`API tạm nghỉ tránh quá tải, tự tiếp tục sau ${sec}s...`);
+        const nextMap = new Map(draftAudioMap);
+        let createdCount = 0;
+        for (let idx = 0; idx < allSteps.length; idx++) {
+          if (nextMap.has(idx)) continue;
+          const stepObj = allSteps[idx];
+          setAudioProgressText(`Đang tạo giọng đọc bước ${idx + 1}/${allSteps.length}...`);
+          const singleRes = await generateStepAudioTTS({
+            text: stepObj.voiceText,
+            apiKey: geminiApiKey.trim(),
+            onCooldownTick: (sec) => {
+              if (sec > 0) {
+                setAudioProgressText(`API tạm nghỉ tránh quá tải, tự chạy bước ${idx + 1}/${allSteps.length} sau ${sec}s...`);
+              }
             }
-          }
-        });
-
-        const nextMap = new Map();
-        batchSegments.forEach((seg, idx) => {
-          nextMap.set(idx, seg);
-        });
-        setDraftAudioMap(nextMap);
-        showToast(`Hoàn tất! Đã tạo xong ${batchSegments.length} đoạn thuyết minh.`);
+          });
+          nextMap.set(idx, singleRes);
+          setDraftAudioMap(new Map(nextMap));
+          createdCount++;
+        }
+        showToast(`Hoàn tất! Đã có đủ ${nextMap.size}/${allSteps.length} đoạn thuyết minh${createdCount > 0 ? ` (tạo mới ${createdCount} bước)` : ''}.`);
       }
       setAudioProgressText('');
     } catch (err) {
@@ -1060,7 +1062,7 @@ export default function DraftStudioDrawer({
                   onClick={() => handleRunStage2GenerateAudio(null)}
                   disabled={isGeneratingAudio}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
-                  title="Tạo gộp giọng đọc AI cho toàn bài trong 1 lượt API"
+                  title="Tạo giọng đọc AI cho các bước còn thiếu"
                 >
                   <Volume2 className="w-3.5 h-3.5" />
                   <span>Tạo giọng AI</span>

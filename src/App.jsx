@@ -336,7 +336,7 @@ export default function App() {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-md"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>{draftProblem ? 'Tiếp tục sửa bản nháp' : 'Nạp đề mới (AI)'}</span>
+            <span>{draftProblem ? 'Tiếp tục sửa bản nháp' : 'Nạp đề mới'}</span>
           </button>
 
           <button
