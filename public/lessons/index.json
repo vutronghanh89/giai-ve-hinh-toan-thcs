@@ -1,5 +1,15 @@
 [
   {
+    "id": "toan-9-tinh-do-dai-canh-va-duong-cao-trong-tam-giac-vuong",
+    "grade": "Toán 9",
+    "topic": "Hệ thức lượng trong tam giác vuông",
+    "title": "Tính độ dài cạnh và đường cao trong tam giác vuông",
+    "path": "/lessons/toan-9/tinh-do-dai-canh-va-duong-cao-trong-tam-giac-vuong/data.json",
+    "audioBasePath": "/lessons/toan-9/tinh-do-dai-canh-va-duong-cao-trong-tam-giac-vuong/audio",
+    "hasStaticAudio": false,
+    "updatedAt": "2026-11-25T14:35:33.554Z"
+  },
+  {
     "id": "toan-7-tam-giac-can-trung-tuyen",
     "grade": "Toán 7",
     "topic": "Tam giác cân & Hai tam giác bằng nhau",

@@ -1,0 +1,203 @@
+{
+  "id": "toan-9-tinh-do-dai-canh-va-duong-cao-trong-tam-giac-vuong",
+  "hasStaticAudio": false,
+  "grade": "Toán 9",
+  "topic": "Hệ thức lượng trong tam giác vuông",
+  "title": "Tính độ dài cạnh và đường cao trong tam giác vuông",
+  "problemText": "Cho tam giác ABC vuông tại A, đường cao AH. Biết AB = 3 cm, AC = 4 cm. Tính độ dài cạnh BC và đường cao AH.",
+  "given": [
+    "△ABC vuông tại A",
+    "AH ⊥ BC (H ∈ BC)",
+    "AB = 3 cm, AC = 4 cm"
+  ],
+  "prove": [
+    "Tính BC",
+    "Tính AH"
+  ],
+  "drawingSteps": [
+    {
+      "caption": "Vẽ tam giác ABC vuông tại A",
+      "voiceExplanation": "Đầu tiên, chúng ta vẽ tam giác A B C vuông tại A. Cô sẽ đặt cạnh góc vuông A B bằng 3 đơn vị và cạnh A C bằng 4 đơn vị.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "B-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Vẽ đường cao AH",
+      "voiceExplanation": "Từ đỉnh A, ta kẻ đường thẳng vuông góc với cạnh huyền B C tại điểm H. Đây chính là đường cao A H của tam giác.",
+      "tool": "eke",
+      "highlightSegments": [
+        "A-H"
+      ],
+      "highlightPoints": [
+        "H"
+      ]
+    }
+  ],
+  "geometry": {
+    "points": [
+      {
+        "id": "A",
+        "label": "A",
+        "x": -60,
+        "y": -45,
+        "dx": -15,
+        "dy": -15,
+        "drawStep": 0
+      },
+      {
+        "id": "B",
+        "label": "B",
+        "x": -60,
+        "y": 45,
+        "dx": -15,
+        "dy": 15,
+        "drawStep": 0
+      },
+      {
+        "id": "C",
+        "label": "C",
+        "x": 60,
+        "y": -45,
+        "dx": 15,
+        "dy": -15,
+        "drawStep": 0
+      },
+      {
+        "id": "H",
+        "label": "H",
+        "x": -16.8,
+        "y": 12.6,
+        "dx": 15,
+        "dy": 15,
+        "drawStep": 1
+      }
+    ],
+    "segments": [
+      {
+        "from": "A",
+        "to": "B",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "A",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "B",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "A",
+        "to": "H",
+        "style": "solid",
+        "color": "accent",
+        "ticks": 0,
+        "drawStep": 1
+      }
+    ],
+    "circles": [],
+    "rightAngles": [
+      {
+        "vertex": "A",
+        "p1": "B",
+        "p2": "C",
+        "drawStep": 0
+      },
+      {
+        "vertex": "H",
+        "p1": "A",
+        "p2": "C",
+        "drawStep": 1
+      }
+    ],
+    "angleArcs": []
+  },
+  "solutionSteps": [
+    {
+      "lineText": "Xét △ABC vuông tại A, áp dụng định lý Pythagore:",
+      "voiceExplanation": "Để tính cạnh huyền B C, chúng ta xét tam giác vuông A B C và áp dụng định lý Pi ta go.",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "B-C"
+      ],
+      "highlightPoints": [],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "C"
+          ],
+          "color": "blue"
+        }
+      ]
+    },
+    {
+      "lineText": "BC² = AB² + AC² = 3² + 4² = 25",
+      "voiceExplanation": "Bình phương cạnh huyền bằng tổng bình phương hai cạnh góc vuông. Ta có 3 bình phương cộng 4 bình phương bằng 25.",
+      "highlightSegments": [],
+      "highlightPoints": [],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "⇒ BC = √25 = 5 (cm)",
+      "voiceExplanation": "Suy ra B C bằng căn bậc hai của 25, tức là bằng 5 xăng ti mét.",
+      "highlightSegments": [
+        "B-C"
+      ],
+      "highlightPoints": [],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Áp dụng hệ thức lượng: AH . BC = AB . AC",
+      "voiceExplanation": "Tiếp theo, để tính đường cao A H, ta sử dụng hệ thức: tích của đường cao và cạnh huyền bằng tích của hai cạnh góc vuông.",
+      "highlightSegments": [
+        "A-H",
+        "B-C",
+        "A-B",
+        "A-C"
+      ],
+      "highlightPoints": [],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "⇒ AH . 5 = 3 . 4 = 12",
+      "voiceExplanation": "Thay các giá trị đã biết vào, ta có A H nhân 5 bằng 3 nhân 4, tức là bằng 12.",
+      "highlightSegments": [],
+      "highlightPoints": [],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "⇒ AH = 12 / 5 = 2,4 (cm)",
+      "voiceExplanation": "Vậy đường cao A H bằng 12 chia 5, kết quả là 2 phẩy 4 xăng ti mét. Bài toán đã được giải xong rồi.",
+      "highlightSegments": [
+        "A-H"
+      ],
+      "highlightPoints": [],
+      "highlightPolygons": []
+    }
+  ],
+  "audioManifest": [],
+  "updatedAt": "2026-11-25T14:35:33.554Z"
+}
