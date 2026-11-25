@@ -1,0 +1,20 @@
+[
+  {
+    "id": "toan-7-tam-giac-can-trung-tuyen",
+    "grade": "Toán 7",
+    "topic": "Tam giác cân & Hai tam giác bằng nhau",
+    "title": "Chứng minh hai tam giác bằng nhau & đường cao trong tam giác cân",
+    "path": "/lessons/toan-7/tam-giac-can-trung-tuyen/data.json",
+    "audioBasePath": "/lessons/toan-7/tam-giac-can-trung-tuyen/audio",
+    "hasStaticAudio": false
+  },
+  {
+    "id": "toan-7-hai-goc-ke-bu-phan-giac",
+    "grade": "Toán 7",
+    "topic": "Góc và đường thẳng song song",
+    "title": "Tính góc tạo bởi hai tia phân giác của hai góc kề bù",
+    "path": "/lessons/toan-7/hai-goc-ke-bu-phan-giac/data.json",
+    "audioBasePath": "/lessons/toan-7/hai-goc-ke-bu-phan-giac/audio",
+    "hasStaticAudio": false
+  }
+]

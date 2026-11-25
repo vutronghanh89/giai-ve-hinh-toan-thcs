@@ -1,0 +1,269 @@
+{
+  "id": "toan-7-hai-goc-ke-bu-phan-giac",
+  "grade": "Toán 7",
+  "topic": "Góc và đường thẳng song song",
+  "title": "Tính góc tạo bởi hai tia phân giác của hai góc kề bù",
+  "hasStaticAudio": false,
+  "problemText": "Cho hai góc kề bù xOz và zOy, biết ∠xOz = 70°. Gọi Om là tia phân giác của góc xOz, On là tia phân giác của góc zOy. Tính số đo góc mOn.",
+  "given": [
+    "∠xOz và ∠zOy kề bù",
+    "∠xOz = 70°",
+    "Om, On lần lượt là phân giác của ∠xOz, ∠zOy"
+  ],
+  "prove": [
+    "Tính số đo ∠mOn"
+  ],
+  "drawingSteps": [
+    {
+      "caption": "Vẽ đường thẳng xy và lấy điểm O nằm trên đường thẳng xy tạo thành hai tia đối nhau Ox, Oy.",
+      "voiceExplanation": "Bước một, ta vẽ đường thẳng x y và lấy điểm O nằm trên đường thẳng đó để tạo hai tia đối nhau O x và O y.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "y-x"
+      ],
+      "highlightPoints": [
+        "O",
+        "x",
+        "y"
+      ]
+    },
+    {
+      "caption": "Vẽ tia Oz sao cho góc xOz = 70°, tạo thành hai góc kề bù xOz và zOy.",
+      "voiceExplanation": "Bước hai, dùng thước đo góc từ đỉnh O, ta vẽ tia O z tạo với tia O x một góc 70 độ, hình thành hai góc kề bù x O z và z O y.",
+      "tool": "protractor",
+      "highlightSegments": [
+        "O-z"
+      ],
+      "highlightPoints": [
+        "O",
+        "z"
+      ]
+    },
+    {
+      "caption": "Vẽ tia Om là tia phân giác của góc xOz (chia góc 70° thành hai góc 35°).",
+      "voiceExplanation": "Bước ba, ta vẽ tia phân giác O m nằm trong góc x O z, chia góc này thành hai góc bằng nhau.",
+      "tool": "protractor",
+      "highlightSegments": [
+        "O-m"
+      ],
+      "highlightPoints": [
+        "O",
+        "m"
+      ]
+    },
+    {
+      "caption": "Vẽ tia On là tia phân giác của góc zOy, hoàn tất hình vẽ.",
+      "voiceExplanation": "Bước bốn, ta vẽ tiếp tia phân giác O n của góc z O y, hoàn thiện đầy đủ hình vẽ.",
+      "tool": "protractor",
+      "highlightSegments": [
+        "O-n"
+      ],
+      "highlightPoints": [
+        "O",
+        "n"
+      ]
+    }
+  ],
+  "geometry": {
+    "points": [
+      {
+        "id": "O",
+        "label": "O",
+        "x": 0,
+        "y": 75,
+        "dx": 0,
+        "dy": 18,
+        "drawStep": 0
+      },
+      {
+        "id": "x",
+        "label": "x",
+        "x": 185,
+        "y": 75,
+        "dx": 12,
+        "dy": 4,
+        "drawStep": 0
+      },
+      {
+        "id": "y",
+        "label": "y",
+        "x": -185,
+        "y": 75,
+        "dx": -12,
+        "dy": 4,
+        "drawStep": 0
+      },
+      {
+        "id": "z",
+        "label": "z",
+        "x": 62,
+        "y": -95,
+        "dx": 10,
+        "dy": -10,
+        "drawStep": 1
+      },
+      {
+        "id": "m",
+        "label": "m",
+        "x": 148,
+        "y": -28,
+        "dx": 12,
+        "dy": -6,
+        "drawStep": 2
+      },
+      {
+        "id": "n",
+        "label": "n",
+        "x": -103,
+        "y": -72,
+        "dx": -12,
+        "dy": -8,
+        "drawStep": 3
+      }
+    ],
+    "segments": [
+      {
+        "from": "y",
+        "to": "x",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "O",
+        "to": "z",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 1
+      },
+      {
+        "from": "O",
+        "to": "m",
+        "style": "dashed",
+        "color": "accent",
+        "ticks": 0,
+        "drawStep": 2
+      },
+      {
+        "from": "O",
+        "to": "n",
+        "style": "dashed",
+        "color": "emerald",
+        "ticks": 0,
+        "drawStep": 3
+      }
+    ],
+    "circles": [],
+    "rightAngles": [
+      {
+        "vertex": "O",
+        "p1": "m",
+        "p2": "n",
+        "drawStep": 4,
+        "solveRevealStep": 3
+      }
+    ],
+    "angleArcs": [
+      {
+        "vertex": "O",
+        "p1": "x",
+        "p2": "m",
+        "radius": 34,
+        "label": "",
+        "color": "accent",
+        "drawStep": 2
+      },
+      {
+        "vertex": "O",
+        "p1": "m",
+        "p2": "z",
+        "radius": 38,
+        "label": "",
+        "color": "accent",
+        "drawStep": 2
+      },
+      {
+        "vertex": "O",
+        "p1": "z",
+        "p2": "n",
+        "radius": 28,
+        "label": "",
+        "color": "emerald",
+        "drawStep": 3
+      },
+      {
+        "vertex": "O",
+        "p1": "n",
+        "p2": "y",
+        "radius": 32,
+        "label": "",
+        "color": "emerald",
+        "drawStep": 3
+      }
+    ]
+  },
+  "solutionSteps": [
+    {
+      "lineText": "Vì Om là tia phân giác của ∠xOz nên: ∠mOz = 1/2 · ∠xOz = 1/2 · 70° = 35°.",
+      "voiceExplanation": "Vì O m là tia phân giác của góc x O z nên góc m O z bằng một nửa góc x O z và bằng 35 độ.",
+      "highlightSegments": [
+        "O-x",
+        "O-m",
+        "O-z"
+      ],
+      "highlightPoints": [
+        "O",
+        "m",
+        "z"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Vì ∠xOz và ∠zOy là hai góc kề bù nên: ∠xOz + ∠zOy = 180° ⇒ ∠zOy = 180° - 70° = 110°.",
+      "voiceExplanation": "Hai góc x O z và z O y kề bù nên tổng số đo bằng 180 độ, suy ra góc z O y bằng 180 độ trừ 70 độ bằng 110 độ.",
+      "highlightSegments": [
+        "O-x",
+        "O-z",
+        "O-y"
+      ],
+      "highlightPoints": [
+        "O",
+        "z",
+        "y"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Vì On là tia phân giác của ∠zOy nên: ∠zOn = 1/2 · ∠zOy = 1/2 · 110° = 55°.",
+      "voiceExplanation": "Tia O n là phân giác của góc z O y nên góc z O n bằng một nửa góc z O y và bằng 55 độ.",
+      "highlightSegments": [
+        "O-z",
+        "O-n",
+        "O-y"
+      ],
+      "highlightPoints": [
+        "O",
+        "z",
+        "n"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Tia Oz nằm giữa hai tia Om, On nên: ∠mOn = ∠mOz + ∠zOn = 35° + 55° = 90°.",
+      "voiceExplanation": "Do tia O z nằm giữa hai tia O m và O n nên góc m O n bằng tổng hai góc m O z và z O n, bằng 35 độ cộng 55 độ bằng 90 độ.",
+      "highlightSegments": [
+        "O-m",
+        "O-z",
+        "O-n"
+      ],
+      "highlightPoints": [
+        "O",
+        "m",
+        "n"
+      ],
+      "highlightPolygons": []
+    }
+  ]
+}

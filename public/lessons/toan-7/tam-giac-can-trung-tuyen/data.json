@@ -1,0 +1,292 @@
+{
+  "id": "toan-7-tam-giac-can-trung-tuyen",
+  "grade": "Toán 7",
+  "topic": "Tam giác cân & Hai tam giác bằng nhau",
+  "title": "Chứng minh hai tam giác bằng nhau & đường cao trong tam giác cân",
+  "hasStaticAudio": false,
+  "problemText": "Cho tam giác ABC cân tại A (AB = AC). Gọi M là trung điểm của cạnh BC. Chứng minh rằng:\na) △ABM = △ACM.\nb) AM vuông góc với BC.",
+  "given": [
+    "△ABC cân tại A (AB = AC)",
+    "M là trung điểm của BC (MB = MC)"
+  ],
+  "prove": [
+    "a) △ABM = △ACM",
+    "b) AM ⊥ BC"
+  ],
+  "drawingSteps": [
+    {
+      "caption": "Vẽ tam giác ABC cân tại đỉnh A có hai cạnh bên AB và AC bằng nhau.",
+      "voiceExplanation": "Bước một, ta dùng thước và compa vẽ tam giác A B C cân tại đỉnh A, đánh dấu hai cạnh bên A B và A C bằng nhau.",
+      "tool": "compass",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "B-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Lấy M là trung điểm của cạnh đáy BC, kí hiệu hai đoạn thẳng MB = MC.",
+      "voiceExplanation": "Bước hai, trên cạnh đáy B C, ta đo và lấy điểm M là trung điểm của B C, kí hiệu hai đoạn thẳng M B bằng M C.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "M"
+      ]
+    },
+    {
+      "caption": "Nối đỉnh A với trung điểm M bằng nét đứt để chia thành hai tam giác ABM và ACM.",
+      "voiceExplanation": "Bước ba, ta dùng thước thẳng nối đỉnh A với trung điểm M bằng đoạn thẳng nét đứt, hoàn thành hình vẽ của bài toán.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "A-M"
+      ],
+      "highlightPoints": [
+        "A",
+        "M"
+      ]
+    }
+  ],
+  "geometry": {
+    "points": [
+      {
+        "id": "A",
+        "label": "A",
+        "x": 0,
+        "y": -115,
+        "dx": 0,
+        "dy": -16,
+        "drawStep": 0
+      },
+      {
+        "id": "B",
+        "label": "B",
+        "x": -115,
+        "y": 85,
+        "dx": -15,
+        "dy": 14,
+        "drawStep": 0
+      },
+      {
+        "id": "C",
+        "label": "C",
+        "x": 115,
+        "y": 85,
+        "dx": 15,
+        "dy": 14,
+        "drawStep": 0
+      },
+      {
+        "id": "M",
+        "label": "M",
+        "x": 0,
+        "y": 85,
+        "dx": 0,
+        "dy": 18,
+        "drawStep": 1
+      }
+    ],
+    "segments": [
+      {
+        "from": "A",
+        "to": "B",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 0
+      },
+      {
+        "from": "A",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 0
+      },
+      {
+        "from": "B",
+        "to": "M",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 0,
+        "ticksFromStep": 1
+      },
+      {
+        "from": "M",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 0,
+        "ticksFromStep": 1
+      },
+      {
+        "from": "A",
+        "to": "M",
+        "style": "dashed",
+        "color": "accent",
+        "ticks": 0,
+        "drawStep": 2
+      }
+    ],
+    "circles": [],
+    "rightAngles": [
+      {
+        "vertex": "M",
+        "p1": "A",
+        "p2": "C",
+        "drawStep": 3,
+        "solveRevealStep": 5
+      }
+    ],
+    "angleArcs": [
+      {
+        "vertex": "M",
+        "p1": "B",
+        "p2": "A",
+        "radius": 22,
+        "label": "",
+        "color": "accent",
+        "drawStep": 3,
+        "solveRevealStep": 5
+      },
+      {
+        "vertex": "M",
+        "p1": "A",
+        "p2": "C",
+        "radius": 25,
+        "label": "",
+        "color": "red",
+        "drawStep": 3,
+        "solveRevealStep": 5
+      }
+    ]
+  },
+  "solutionSteps": [
+    {
+      "lineText": "a) Xét △ABM và △ACM, ta có:",
+      "voiceExplanation": "Để chứng minh tam giác A B M bằng tam giác A C M, trước tiên ta xét hai tam giác này và liệt kê các yếu tố bằng nhau.",
+      "highlightSegments": [],
+      "highlightPoints": [
+        "A",
+        "B",
+        "M",
+        "C"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "M"
+          ],
+          "color": "blue"
+        },
+        {
+          "points": [
+            "A",
+            "C",
+            "M"
+          ],
+          "color": "amber"
+        }
+      ]
+    },
+    {
+      "lineText": "   AB = AC (giả thiết △ABC cân tại A)",
+      "voiceExplanation": "Thứ nhất, cạnh A B bằng cạnh A C vì tam giác A B C cân tại A theo giả thiết.",
+      "highlightSegments": [
+        "A-B",
+        "A-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "   MB = MC (M là trung điểm của BC)",
+      "voiceExplanation": "Thứ hai, đoạn thẳng M B bằng đoạn thẳng M C vì M là trung điểm của cạnh B C.",
+      "highlightSegments": [
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "M",
+        "C"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "   AM là cạnh chung",
+      "voiceExplanation": "Thứ ba, hai tam giác có chung cạnh A M.",
+      "highlightSegments": [
+        "A-M"
+      ],
+      "highlightPoints": [
+        "A",
+        "M"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "⇒ △ABM = △ACM (c.c.c).",
+      "voiceExplanation": "Vậy ba cạnh của tam giác này bằng ba cạnh của tam giác kia, suy ra tam giác A B M bằng tam giác A C M theo trường hợp cạnh, cạnh, cạnh.",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "A-M",
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "M",
+        "C"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "M"
+          ],
+          "color": "blue"
+        },
+        {
+          "points": [
+            "A",
+            "C",
+            "M"
+          ],
+          "color": "emerald"
+        }
+      ]
+    },
+    {
+      "lineText": "b) Từ △ABM = △ACM ⇒ ∠AMB = ∠AMC (hai góc tương ứng). Mà ∠AMB + ∠AMC = 180° (kề bù) nên ∠AMB = ∠AMC = 90° ⇒ AM ⊥ BC.",
+      "voiceExplanation": "Sang câu b, từ hai tam giác bằng nhau suy ra hai góc A M B và A M C bằng nhau. Mà hai góc này kề bù có tổng bằng 180 độ nên mỗi góc bằng 90 độ, chứng tỏ A M vuông góc với B C.",
+      "highlightSegments": [
+        "A-M",
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "M"
+      ],
+      "highlightPolygons": []
+    }
+  ]
+}
