@@ -5,7 +5,6 @@ import {
   Loader2,
   Send,
   Headphones,
-  CheckCircle2,
   Trash2,
   Upload,
   Github,
@@ -25,10 +24,7 @@ import {
   generateGeometryAndSolution,
   refineDraftProblemWithChat,
   generateBatchLessonAudioTTS,
-  generateStepAudioTTS,
-  speakWithBrowserVietnameseVoice,
-  extractAndParseJson,
-  normalizeProblemData
+  generateStepAudioTTS
 } from '../services/geminiService.js';
 import {
   saveLessonDirectToGithub,
@@ -43,14 +39,184 @@ const QUICK_EDIT_SUGGESTIONS = [
 ];
 
 /**
+ * Đọc giọng tiếng Việt trực tiếp bằng trình duyệt (dự phòng khi chưa có file MP3)
+ */
+function speakVietnameseBrowserFallback(text) {
+  if (!text || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'vi-VN';
+    utter.rate = 0.98;
+    const voices = window.speechSynthesis.getVoices();
+    const viVoice =
+      voices.find((v) => v.lang?.toLowerCase().includes('vi') && v.name?.includes('HoaiMy')) ||
+      voices.find((v) => v.lang?.toLowerCase().includes('vi'));
+    if (viVoice) utter.voice = viVoice;
+    window.speechSynthesis.speak(utter);
+  } catch {
+    // Bỏ qua nếu trình duyệt chặn autoplay
+  }
+}
+
+/**
+ * Phân tích cú pháp JSON từ tệp data.json (hỗ trợ cả trường hợp có bọc ```json)
+ */
+function parseLessonJsonText(rawText) {
+  const cleaned = String(rawText || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
+
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    throw new Error('Nội dung tệp JSON không hợp lệ (không tìm thấy đối tượng dữ liệu bài toán).');
+  }
+
+  try {
+    return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+  } catch (err) {
+    throw new Error(`Lỗi cú pháp trong tệp data.json: ${err.message}`);
+  }
+}
+
+/**
+ * Chuẩn hóa dữ liệu bài toán nạp từ Gem để tương thích 100% với Canvas và kho bài mẫu
+ */
+function normalizeImportedLesson(raw, fallbackProblemText = '') {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Dữ liệu bài toán trống hoặc không đúng định dạng.');
+  }
+
+  const rawGrade = String(raw.grade || 'Toán 7').trim();
+  let grade = 'Toán 7';
+  if (/6/.test(rawGrade)) grade = 'Toán 6';
+  else if (/7/.test(rawGrade)) grade = 'Toán 7';
+  else if (/8/.test(rawGrade)) grade = 'Toán 8';
+  else if (/9/.test(rawGrade)) grade = 'Toán 9';
+
+  const geo = raw.geometry && typeof raw.geometry === 'object' ? raw.geometry : {};
+
+  const points = Array.isArray(geo.points)
+    ? geo.points.map((p, idx) => ({
+        id: String(p.id || p.label || `P${idx}`),
+        label: String(p.label || p.id || `P${idx}`),
+        x: Number(p.x) || 0,
+        y: Number(p.y) || 0,
+        dx: Number.isFinite(Number(p.dx)) ? Number(p.dx) : 0,
+        dy: Number.isFinite(Number(p.dy)) ? Number(p.dy) : -14,
+        drawStep: Number.isFinite(Number(p.drawStep)) ? Number(p.drawStep) : 0
+      }))
+    : [];
+
+  if (points.length === 0) {
+    throw new Error('Tệp data.json chưa có danh sách điểm tọa độ (geometry.points).');
+  }
+
+  const segments = Array.isArray(geo.segments)
+    ? geo.segments.map((s) => ({
+        from: String(s.from || ''),
+        to: String(s.to || ''),
+        style: s.style === 'dashed' ? 'dashed' : 'solid',
+        color: s.color || 'main',
+        ticks: Number(s.ticks) || 0,
+        drawStep: Number.isFinite(Number(s.drawStep)) ? Number(s.drawStep) : 0
+      }))
+    : [];
+
+  const circles = Array.isArray(geo.circles)
+    ? geo.circles.map((c) => ({
+        center: String(c.center || ''),
+        radius: Number(c.radius) || 60,
+        style: c.style === 'dashed' ? 'dashed' : 'solid',
+        color: c.color || 'main',
+        drawStep: Number.isFinite(Number(c.drawStep)) ? Number(c.drawStep) : 0
+      }))
+    : [];
+
+  const rightAngles = Array.isArray(geo.rightAngles)
+    ? geo.rightAngles.map((r) => {
+        const item = {
+          vertex: String(r.vertex || ''),
+          p1: String(r.p1 || ''),
+          p2: String(r.p2 || ''),
+          drawStep: Number.isFinite(Number(r.drawStep)) ? Number(r.drawStep) : 0
+        };
+        if (r.solveRevealStep !== undefined && r.solveRevealStep !== null) {
+          item.solveRevealStep = Number(r.solveRevealStep);
+        }
+        return item;
+      })
+    : [];
+
+  const angleArcs = Array.isArray(geo.angleArcs)
+    ? geo.angleArcs.map((a) => {
+        const item = {
+          vertex: String(a.vertex || ''),
+          p1: String(a.p1 || ''),
+          p2: String(a.p2 || ''),
+          radius: Number(a.radius) || 22,
+          label: String(a.label || ''),
+          color: a.color || 'accent',
+          drawStep: Number.isFinite(Number(a.drawStep)) ? Number(a.drawStep) : 0
+        };
+        if (a.solveRevealStep !== undefined && a.solveRevealStep !== null) {
+          item.solveRevealStep = Number(a.solveRevealStep);
+        }
+        return item;
+      })
+    : [];
+
+  const drawingSteps = Array.isArray(raw.drawingSteps)
+    ? raw.drawingSteps.map((st, idx) => ({
+        caption: String(st.caption || `Bước ${idx + 1}`),
+        voiceExplanation: String(st.voiceExplanation || st.caption || `Bước ${idx + 1}`),
+        tool: ['ruler', 'compass', 'protractor', 'eke'].includes(st.tool) ? st.tool : 'ruler',
+        highlightSegments: Array.isArray(st.highlightSegments) ? st.highlightSegments : [],
+        highlightPoints: Array.isArray(st.highlightPoints) ? st.highlightPoints : []
+      }))
+    : [];
+
+  const solutionSteps = Array.isArray(raw.solutionSteps)
+    ? raw.solutionSteps.map((st) => ({
+        lineText: String(st.lineText || ''),
+        voiceExplanation: String(st.voiceExplanation || st.lineText || ''),
+        highlightSegments: Array.isArray(st.highlightSegments) ? st.highlightSegments : [],
+        highlightPoints: Array.isArray(st.highlightPoints) ? st.highlightPoints : [],
+        highlightPolygons: Array.isArray(st.highlightPolygons) ? st.highlightPolygons : []
+      }))
+    : [];
+
+  return {
+    id: String(raw.id || `bai-toan-${Date.now()}`).trim(),
+    hasStaticAudio: Boolean(raw.hasStaticAudio),
+    grade,
+    topic: String(raw.topic || '').trim(),
+    title: String(raw.title || '').trim(),
+    problemText: String(raw.problemText || fallbackProblemText || '').trim(),
+    given: Array.isArray(raw.given) ? raw.given.map(String) : [],
+    prove: Array.isArray(raw.prove) ? raw.prove.map(String) : [],
+    drawingSteps,
+    geometry: {
+      points,
+      segments,
+      circles,
+      rightAngles,
+      angleArcs
+    },
+    solutionSteps
+  };
+}
+
+/**
  * Giải nén tệp .zip trực tiếp trên trình duyệt (không cần thư viện ngoài)
- * Trả về mảng [{ path: string, bytes: Uint8Array }]
  */
 async function extractZipEntriesBrowser(arrayBuffer) {
   const bytes = new Uint8Array(arrayBuffer);
   const view = new DataView(arrayBuffer);
 
-  // Tìm End of Central Directory (0x06054b50)
   let eocdOffset = -1;
   const minOffset = Math.max(0, bytes.length - 65557);
   for (let i = bytes.length - 22; i >= minOffset; i--) {
@@ -83,7 +249,6 @@ async function extractZipEntriesBrowser(arrayBuffer) {
     const filePath = decoder.decode(bytes.subarray(cdOffset + 46, cdOffset + 46 + fileNameLen));
     cdOffset += 46 + fileNameLen + extraFieldLen + commentLen;
 
-    // Bỏ qua thư mục rỗng và file hệ thống macOS
     if (filePath.endsWith('/') || filePath.includes('__MACOSX/')) {
       continue;
     }
@@ -164,7 +329,6 @@ export default function DraftStudioDrawer({
   onLessonSavedToGithub,
   showToast
 }) {
-  // Tab nạp đề: 'file' (Nạp từ file/thư mục Gem) hoặc 'ai' (Tạo trực tiếp bằng API)
   const [inputMode, setInputMode] = useState('file');
   const [importedSourceName, setImportedSourceName] = useState('');
   const [isImportingFiles, setIsImportingFiles] = useState(false);
@@ -186,7 +350,6 @@ export default function DraftStudioDrawer({
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
 
-  // Thông tin metadata (Khối lớp, Dạng toán, Tên bài) hiển thị trực tiếp để giáo viên điền nhanh
   const [saveGrade, setSaveGrade] = useState(draftProblem?.grade || 'Toán 7');
   const [saveTopic, setSaveTopic] = useState(draftProblem?.topic || '');
   const [saveTitle, setSaveTitle] = useState(draftProblem?.title || '');
@@ -213,7 +376,7 @@ export default function DraftStudioDrawer({
   };
 
   /**
-   * Xử lý nạp đề từ File (.zip, data.json + .mp3) hoặc cả Thư mục (webkitdirectory) tạo từ Gem
+   * Nạp gói bài học từ tệp .zip, data.json (+ .mp3), hoặc nguyên thư mục từ Skill
    */
   const handleImportGemPackage = async (fileList, sourceLabel = '') => {
     const files = Array.from(fileList || []);
@@ -223,7 +386,6 @@ export default function DraftStudioDrawer({
     setIsImportingFiles(true);
 
     try {
-      // Thu thập danh sách [{ path, bytes }] từ ZIP hoặc từ danh sách file/thư mục
       let virtualEntries = [];
 
       if (files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
@@ -237,36 +399,32 @@ export default function DraftStudioDrawer({
         }
       }
 
-      // 1. Tìm tệp JSON cấu trúc bài toán (ưu tiên data.json, hoặc file .json bất kỳ không phải index.json)
       const jsonEntries = virtualEntries.filter((e) =>
         e.path.toLowerCase().endsWith('.json')
       );
       const primaryJsonEntry =
-        jsonEntries.find((e) => e.path.toLowerCase().endsWith('/data.json') || e.path.toLowerCase() === 'data.json') ||
+        jsonEntries.find(
+          (e) =>
+            e.path.toLowerCase().endsWith('/data.json') ||
+            e.path.toLowerCase() === 'data.json'
+        ) ||
         jsonEntries.find((e) => !e.path.toLowerCase().endsWith('index.json')) ||
         jsonEntries[0];
 
       if (!primaryJsonEntry) {
         throw new Error(
-          'Không tìm thấy tệp data.json trong gói tệp/thư mục vừa chọn. Thầy vui lòng kiểm tra lại cấu trúc file từ Gem!'
+          'Không tìm thấy tệp data.json trong gói tệp/thư mục vừa chọn. Thầy vui lòng kiểm tra lại!'
         );
       }
 
       const jsonText = new TextDecoder('utf-8').decode(primaryJsonEntry.bytes);
-      const parsedRaw = extractAndParseJson(jsonText);
-      const normalized = normalizeProblemData(parsedRaw, parsedRaw?.problemText || '');
+      const parsedRaw = parseLessonJsonText(jsonText);
+      const normalized = normalizeImportedLesson(parsedRaw, parsedRaw?.problemText || '');
 
-      // Giữ lại ID gốc nếu Gem đã đặt chuẩn (không phải draft_...)
-      if (parsedRaw?.id && typeof parsedRaw.id === 'string') {
-        normalized.id = parsedRaw.id.trim();
-      }
-
-      // 2. Tìm tất cả các tệp âm thanh (.mp3, .wav, .ogg, .m4a) trong gói/thư mục
       const audioEntriesRaw = virtualEntries.filter((e) =>
         /\.(mp3|wav|ogg|m4a)$/i.test(e.path)
       );
 
-      // Giải phóng audio URL cũ nếu có
       draftAudioMap.forEach((entry) => {
         if (entry?.url) URL.revokeObjectURL(entry.url);
       });
@@ -275,7 +433,6 @@ export default function DraftStudioDrawer({
       const allSteps = buildAllStepsForAudio(normalized);
 
       if (audioEntriesRaw.length > 0 && allSteps.length > 0) {
-        // Sắp xếp theo số bước trong tên file (step_0.mp3, step_1.mp3... hoặc thứ tự tự nhiên)
         audioEntriesRaw.sort((a, b) => {
           const nameA = a.path.split('/').pop() || '';
           const nameB = b.path.split('/').pop() || '';
@@ -320,7 +477,7 @@ export default function DraftStudioDrawer({
           role: 'ai',
           text: `Đã nạp thành công gói "${displaySource}" (${normalized.geometry.points.length} điểm, ${normalized.drawingSteps.length} bước vẽ, ${normalized.solutionSteps.length} bước giải${
             nextAudioMap.size > 0 ? `, kèm ${nextAudioMap.size} tệp âm thanh` : ''
-          }). Thầy chỉ cần kiểm tra Khối lớp, Dạng toán, Tên bài bên dưới rồi bấm "Lưu vào bài mẫu"!`
+          }). Thầy điền/kiểm tra Khối lớp, Dạng toán, Tên bài bên dưới rồi bấm "Lưu ngay vào bài mẫu"!`
         }
       ]);
 
@@ -356,7 +513,6 @@ export default function DraftStudioDrawer({
     reader.readAsDataURL(file);
   };
 
-  // ĐỢT 1 (Nếu dùng API trực tiếp): Tạo Hình vẽ, GT-KL & Lời giải
   const handleRunStage1GeometryAndSolution = async () => {
     if (!problemInput.trim() && !imageAttachment) {
       setErrorBanner('Vui lòng nhập nội dung đề bài hoặc tải ảnh đề bài lên trước.');
@@ -398,7 +554,6 @@ export default function DraftStudioDrawer({
     }
   };
 
-  // Chat trực tiếp với AI để chỉnh bản nháp
   const handleSendRefineChat = async (customText) => {
     const instruction = (customText ?? chatInput).trim();
     if (!instruction || !draftProblem || isRefiningChat) return;
@@ -439,7 +594,6 @@ export default function DraftStudioDrawer({
     }
   };
 
-  // Tạo âm thanh GỘP 1 LƯỢT API (nếu không dùng file MP3 có sẵn)
   const handleRunStage2GenerateAudio = async (singleStepIndex = null) => {
     if (!draftProblem) return;
     if (!geminiApiKey?.trim()) {
@@ -496,7 +650,6 @@ export default function DraftStudioDrawer({
     }
   };
 
-  // Nạp thêm file MP3/WAV lẻ cho các bước
   const handleImportOfflineAudioFiles = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !draftProblem) return;
@@ -616,7 +769,7 @@ export default function DraftStudioDrawer({
           <div>
             <h2 className="text-sm font-bold text-white">Nạp Đề Mới & Hiệu Chỉnh Bài Mẫu</h2>
             <p className="text-[11px] text-slate-400">
-              Nạp từ file/thư mục Gem hoặc tạo trực tiếp bằng AI
+              Nạp từ file/thư mục Skill hoặc tạo trực tiếp bằng AI
             </p>
           </div>
         </div>
@@ -649,7 +802,7 @@ export default function DraftStudioDrawer({
             }`}
           >
             <FolderOpen className="w-3.5 h-3.5" />
-            <span>Nạp bằng File / Thư mục (Gem)</span>
+            <span>Nạp bằng File / Thư mục</span>
           </button>
           <button
             onClick={() => setInputMode('ai')}
@@ -664,12 +817,12 @@ export default function DraftStudioDrawer({
           </button>
         </div>
 
-        {/* PHƯƠNG THỨC 1: NẠP BẰNG FILE / THƯ MỤC TỪ GEM */}
+        {/* PHƯƠNG THỨC 1: NẠP BẰNG FILE / THƯ MỤC */}
         {inputMode === 'file' && (
           <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-emerald-500/30 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                Chọn gói bài học đã tạo từ Gem
+                Tải gói bài học lên (ZIP / JSON / Thư mục)
               </span>
               {importedSourceName && (
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium truncate max-w-[180px]">
@@ -679,7 +832,6 @@ export default function DraftStudioDrawer({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Nút 1: Chọn file .zip hoặc data.json + .mp3 */}
               <button
                 type="button"
                 onClick={() => zipOrFilesInputRef.current?.click()}
@@ -693,11 +845,10 @@ export default function DraftStudioDrawer({
                   Chọn tệp .ZIP hoặc data.json
                 </div>
                 <div className="text-[11px] text-slate-400">
-                  Hỗ trợ chọn 1 file .zip hoặc chọn cùng lúc data.json + các file .mp3
+                  Chọn 1 file .zip hoặc chọn cùng lúc data.json + các file .mp3
                 </div>
               </button>
 
-              {/* Nút 2: Chọn cả thư mục */}
               <button
                 type="button"
                 onClick={() => folderInputRef.current?.click()}
@@ -813,7 +964,7 @@ export default function DraftStudioDrawer({
           </div>
         )}
 
-        {/* KHUNG ĐIỀN THÔNG TIN LỚP • DẠNG TOÁN • TÊN BÀI & LƯU NGAY (HIỂN THỊ KHI ĐÃ CÓ BẢN NHÁP) */}
+        {/* KHUNG ĐIỀN THÔNG TIN LỚP • DẠNG TOÁN • TÊN BÀI & LƯU NGAY */}
         {draftProblem && (
           <div className="p-3.5 rounded-2xl bg-gradient-to-b from-amber-950/35 to-slate-900/95 border border-amber-500/40 space-y-3">
             <div className="flex items-center justify-between">
@@ -887,7 +1038,7 @@ export default function DraftStudioDrawer({
           </div>
         )}
 
-        {/* QUẢN LÝ ÂM THANH TỪNG BƯỚC (TỰ NHẬN MP3 TỪ GÓI GEM HOẶC NẠP BỔ SUNG) */}
+        {/* QUẢN LÝ ÂM THANH TỪNG BƯỚC */}
         {draftProblem && (
           <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between gap-2">
@@ -951,7 +1102,7 @@ export default function DraftStudioDrawer({
                         </button>
                       ) : (
                         <button
-                          onClick={() => speakWithBrowserVietnameseVoice(st.voiceText)}
+                          onClick={() => speakVietnameseBrowserFallback(st.voiceText)}
                           className="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-[11px]"
                           title="Nghe thử bằng giọng đọc miễn phí của trình duyệt"
                         >
