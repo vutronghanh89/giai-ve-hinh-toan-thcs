@@ -1,0 +1,435 @@
+{
+  "id": "toan-8-duong-trung-binh-trong-tam-giac-vuong",
+  "hasStaticAudio": false,
+  "grade": "Toán 8",
+  "topic": "Đường trung bình của tam giác",
+  "title": "Đường trung bình trong tam giác vuông",
+  "problemText": "Cho tam giác ABC vuông tại A có AB = 6 cm, AC = 8 cm. Gọi M và N lần lượt là trung điểm của BC và AC.\na) Tính độ dài cạnh BC và đoạn thẳng MN.\nb) Kẻ đường thẳng qua N song song với AB, cắt BC tại E. Chứng minh tứ giác ABEN là hình thang vuông.",
+  "given": [
+    "△ABC vuông tại A, AB = 6 cm, AC = 8 cm",
+    "M là trung điểm của BC, N là trung điểm của AC",
+    "Đường thẳng qua N song song với AB cắt BC tại E"
+  ],
+  "prove": [
+    "a) Tính độ dài cạnh BC và đoạn thẳng MN",
+    "b) Chứng minh tứ giác ABEN là hình thang vuông"
+  ],
+  "drawingSteps": [
+    {
+      "caption": "Vẽ hai cạnh góc vuông AB = 6 cm và AC = 8 cm vuông góc tại A",
+      "voiceExplanation": "Đầu tiên, ta dùng ê ke vẽ hai cạnh góc vuông A B bằng 6 xen ti mét và A C bằng 8 xen ti mét vuông góc với nhau tại đỉnh A.",
+      "tool": "eke",
+      "highlightSegments": [
+        "A-B",
+        "A-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Nối B với C để hoàn thành tam giác ABC vuông tại A",
+      "voiceExplanation": "Tiếp theo, ta dùng thước thẳng nối điểm B với điểm C, hoàn thành tam giác A B C vuông tại A.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "B-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Lấy trung điểm M của BC, trung điểm N của AC và nối MN",
+      "voiceExplanation": "Sau đó, ta xác định M là trung điểm của cạnh B C, N là trung điểm của cạnh A C, đánh dấu các đoạn thẳng bằng nhau rồi nối đoạn thẳng M N.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "M-N",
+        "B-M",
+        "M-C",
+        "A-N",
+        "N-C"
+      ],
+      "highlightPoints": [
+        "M",
+        "N"
+      ]
+    },
+    {
+      "caption": "Qua N kẻ đường thẳng song song với AB, cắt BC tại E",
+      "voiceExplanation": "Ở câu b, qua điểm N ta kẻ đường thẳng song song với cạnh A B, cắt cạnh B C tại điểm E. Vì N là trung điểm của A C nên điểm E trùng với trung điểm M của B C.",
+      "tool": "eke",
+      "highlightSegments": [
+        "N-E",
+        "A-B"
+      ],
+      "highlightPoints": [
+        "N",
+        "E"
+      ]
+    }
+  ],
+  "geometry": {
+    "points": [
+      {
+        "id": "A",
+        "label": "A",
+        "x": -120,
+        "y": 95,
+        "dx": -16,
+        "dy": 16,
+        "drawStep": 0
+      },
+      {
+        "id": "B",
+        "label": "B",
+        "x": -120,
+        "y": -73,
+        "dx": -16,
+        "dy": -12,
+        "drawStep": 0
+      },
+      {
+        "id": "C",
+        "label": "C",
+        "x": 104,
+        "y": 95,
+        "dx": 16,
+        "dy": 16,
+        "drawStep": 0
+      },
+      {
+        "id": "M",
+        "label": "M",
+        "x": -8,
+        "y": 11,
+        "dx": 14,
+        "dy": -12,
+        "drawStep": 2
+      },
+      {
+        "id": "N",
+        "label": "N",
+        "x": -8,
+        "y": 95,
+        "dx": 0,
+        "dy": 18,
+        "drawStep": 2
+      },
+      {
+        "id": "E",
+        "label": "E",
+        "x": -8,
+        "y": 11,
+        "dx": 18,
+        "dy": 10,
+        "drawStep": 3
+      }
+    ],
+    "segments": [
+      {
+        "from": "A",
+        "to": "B",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "A",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "B",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 1
+      },
+      {
+        "from": "B",
+        "to": "M",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 2
+      },
+      {
+        "from": "M",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 2
+      },
+      {
+        "from": "A",
+        "to": "N",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 2
+      },
+      {
+        "from": "N",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 2
+      },
+      {
+        "from": "M",
+        "to": "N",
+        "style": "solid",
+        "color": "accent",
+        "ticks": 0,
+        "drawStep": 2
+      },
+      {
+        "from": "N",
+        "to": "E",
+        "style": "solid",
+        "color": "emerald",
+        "ticks": 0,
+        "drawStep": 3
+      }
+    ],
+    "circles": [],
+    "rightAngles": [
+      {
+        "vertex": "A",
+        "p1": "B",
+        "p2": "C",
+        "drawStep": 0
+      }
+    ],
+    "angleArcs": []
+  },
+  "solutionSteps": [
+    {
+      "lineText": "a) Xét △ABC vuông tại A, áp dụng định lí Pythagore ta có:",
+      "voiceExplanation": "Câu a. Xét tam giác A B C vuông tại A, áp dụng định lí Pi ta go, ta có:",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "B-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "C"
+          ],
+          "color": "blue"
+        }
+      ]
+    },
+    {
+      "lineText": "BC² = AB² + AC² = 6² + 8² = 36 + 64 = 100",
+      "voiceExplanation": "B C bình phương bằng A B bình phương cộng A C bình phương, bằng 6 bình phương cộng 8 bình phương, bằng 36 cộng 64 và bằng 100.",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "B-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "C"
+          ],
+          "color": "blue"
+        }
+      ]
+    },
+    {
+      "lineText": "Suy ra BC = √100 = 10 (cm)",
+      "voiceExplanation": "Suy ra cạnh B C bằng căn bậc hai của 100, bằng 10 xen ti mét.",
+      "highlightSegments": [
+        "B-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "C"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Xét △ABC có M là trung điểm của BC, N là trung điểm của AC",
+      "voiceExplanation": "Tiếp theo, để tính độ dài đoạn thẳng M N, ta xét tam giác A B C có M là trung điểm của cạnh B C và N là trung điểm của cạnh A C.",
+      "highlightSegments": [
+        "B-M",
+        "M-C",
+        "A-N",
+        "N-C"
+      ],
+      "highlightPoints": [
+        "M",
+        "N"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "C"
+          ],
+          "color": "blue"
+        }
+      ]
+    },
+    {
+      "lineText": "Nên MN là đường trung bình của △ABC",
+      "voiceExplanation": "Theo định nghĩa, đoạn thẳng M N chính là đường trung bình của tam giác A B C.",
+      "highlightSegments": [
+        "M-N",
+        "A-B"
+      ],
+      "highlightPoints": [
+        "M",
+        "N"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Suy ra MN = ½ AB = ½ · 6 = 3 (cm) (tính chất đường trung bình)",
+      "voiceExplanation": "Áp dụng tính chất đường trung bình của tam giác, ta suy ra M N bằng một nửa cạnh A B, bằng một nửa nhân 6, bằng 3 xen ti mét.",
+      "highlightSegments": [
+        "M-N",
+        "A-B"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "M",
+        "N"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "b) Đường thẳng qua N song song với AB cắt BC tại E nên NE ∥ AB",
+      "voiceExplanation": "Sang câu b. Theo giả thiết, đường thẳng đi qua điểm N song song với A B cắt cạnh B C tại điểm E, nên đoạn thẳng N E song song với A B.",
+      "highlightSegments": [
+        "N-E",
+        "A-B"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "E",
+        "N"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "E",
+            "N"
+          ],
+          "color": "emerald"
+        }
+      ]
+    },
+    {
+      "lineText": "Xét tứ giác ABEN có NE ∥ AB nên tứ giác ABEN là hình thang",
+      "voiceExplanation": "Xét tứ giác A B E N có hai cạnh đối N E và A B song song với nhau, nên tứ giác A B E N là một hình thang.",
+      "highlightSegments": [
+        "A-B",
+        "N-E",
+        "A-N",
+        "B-M"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "E",
+        "N"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "E",
+            "N"
+          ],
+          "color": "emerald"
+        }
+      ]
+    },
+    {
+      "lineText": "Mặt khác, △ABC vuông tại A và N ∈ AC nên ∠BAN = 90°",
+      "voiceExplanation": "Mặt khác, vì tam giác A B C vuông tại A và điểm N nằm trên cạnh A C, nên góc B A N bằng 90 độ.",
+      "highlightSegments": [
+        "A-B",
+        "A-N"
+      ],
+      "highlightPoints": [
+        "B",
+        "A",
+        "N"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "E",
+            "N"
+          ],
+          "color": "emerald"
+        }
+      ]
+    },
+    {
+      "lineText": "Hình thang ABEN có ∠BAN = 90° nên ABEN là hình thang vuông (đpcm)",
+      "voiceExplanation": "Hình thang A B E N có một góc vuông tại đỉnh A, do đó tứ giác A B E N là hình thang vuông. Điều phải chứng minh.",
+      "highlightSegments": [
+        "A-B",
+        "N-E",
+        "A-N",
+        "B-M"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "E",
+        "N"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "E",
+            "N"
+          ],
+          "color": "emerald"
+        }
+      ]
+    }
+  ],
+  "audioManifest": [],
+  "updatedAt": "2026-11-25T15:26:21.665Z"
+}
