@@ -76,10 +76,8 @@ export function extractAndParseJson(rawText) {
   }
 
   let cleaned = rawText.trim();
-  // Gỡ bỏ khối ```json ... ``` hoặc ``` ... ``` nếu có
   cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-  // Trích xuất từ dấu { đầu tiên đến dấu } cuối cùng
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
@@ -89,7 +87,6 @@ export function extractAndParseJson(rawText) {
   try {
     return JSON.parse(cleaned);
   } catch (firstErr) {
-    // Sửa lỗi dấu phẩy thừa trước ] hoặc }
     const repaired = cleaned.replace(/,\s*([}\]])/g, '$1');
     try {
       return JSON.parse(repaired);
@@ -251,75 +248,124 @@ export function normalizeProblemData(raw, fallbackProblemText = '') {
 }
 
 /**
- * Hàm lõi gọi Gemini 2.5 Flash có cơ chế tự động phục hồi và báo lỗi rõ ràng
+ * Tự động tìm các model Gemini Flash khả dụng cho API Key hiện tại nếu model mặc định trả về 404
+ */
+async function discoverAvailableFlashModels(apiKey) {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const models = Array.isArray(data?.models) ? data.models : [];
+    return models
+      .filter(
+        (m) =>
+          Array.isArray(m.supportedGenerationMethods) &&
+          m.supportedGenerationMethods.includes('generateContent') &&
+          m.name?.includes('flash') &&
+          !m.name?.includes('tts') &&
+          !m.name?.includes('image')
+      )
+      .map((m) => m.name.replace(/^models\//, ''))
+      .sort((a, b) => b.localeCompare(a));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Hàm lõi gọi Gemini (ưu tiên gemini-3.8-flash và tự động chuyển đổi nếu gặp HTTP 404)
  */
 async function callGeminiJsonCore(parts, apiKey) {
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-
-  const configsToTry = [
-    {
-      responseMimeType: 'application/json',
-      temperature: 0.2,
-      maxOutputTokens: 8192,
-      thinkingConfig: { thinkingBudget: 1024 }
-    },
-    {
-      responseMimeType: 'application/json',
-      temperature: 0.2,
-      maxOutputTokens: 8192
-    }
-  ];
-
+  const candidateModels = ['gemini-3.8-flash', 'gemini-3.0-flash', 'gemini-2.5-flash'];
+  const triedModels = new Set();
   let lastError = null;
 
-  for (let cfgIdx = 0; cfgIdx < configsToTry.length; cfgIdx++) {
-    const payload = {
-      contents: [{ parts }],
-      systemInstruction: { parts: [{ text: TEACHER_SYSTEM_PROMPT }] },
-      generationConfig: configsToTry[cfgIdx]
-    };
+  for (let mIdx = 0; mIdx < candidateModels.length; mIdx++) {
+    const modelName = candidateModels[mIdx];
+    if (triedModels.has(modelName)) continue;
+    triedModels.add(modelName);
 
-    try {
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-      if (!res.ok) {
-        let detail = '';
-        try {
-          const errBody = await res.json();
-          detail = errBody?.error?.message || '';
-        } catch {
-          // ignore
-        }
-
-        if (res.status === 400 && cfgIdx === 0 && detail.toLowerCase().includes('thinking')) {
-          continue; // Thử lại không dùng thinkingConfig
-        }
-        if (res.status === 400 || res.status === 403) {
-          throw new Error(`API Key không hợp lệ hoặc bị từ chối (${res.status}): ${detail || 'Kiểm tra lại Gemini API Key'}`);
-        }
-        if (res.status === 429) {
-          throw new Error('API đang chạm giới hạn lượt gọi (429). Vui lòng đợi khoảng 15 giây rồi bấm thử lại.');
-        }
-        throw new Error(`Lỗi máy chủ Gemini (HTTP ${res.status}): ${detail}`);
+    const configsToTry = [
+      {
+        responseMimeType: 'application/json',
+        temperature: 0.2,
+        maxOutputTokens: 8192
+      },
+      {
+        temperature: 0.2,
+        maxOutputTokens: 8192
       }
+    ];
 
-      const data = await res.json();
-      const candidate = data?.candidates?.[0];
-      if (!candidate) {
-        throw new Error('Gemini không trả về kết quả (có thể nội dung bị chặn hoặc rỗng).');
-      }
-      if (candidate.finishReason === 'MAX_TOKENS') {
-        throw new Error('Lời giải quá dài vượt giới hạn phản hồi. Hãy thử yêu cầu AI viết súc tích hơn.');
-      }
+    for (let cfgIdx = 0; cfgIdx < configsToTry.length; cfgIdx++) {
+      const payload = {
+        contents: [{ parts }],
+        systemInstruction: { parts: [{ text: TEACHER_SYSTEM_PROMPT }] },
+        generationConfig: configsToTry[cfgIdx]
+      };
 
-      const rawText = candidate?.content?.parts?.map((p) => p.text || '').join('') || '';
-      return extractAndParseJson(rawText);
-    } catch (err) {
-      lastError = err;
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          let detail = '';
+          try {
+            const errBody = await res.json();
+            detail = errBody?.error?.message || '';
+          } catch {
+            // ignore
+          }
+
+          // Nếu model trả về 404 (ngừng hỗ trợ hoặc chưa mở cho key), thử model tiếp theo & quét danh sách model khả dụng
+          if (res.status === 404) {
+            const discovered = await discoverAvailableFlashModels(apiKey);
+            for (const dm of discovered) {
+              if (!triedModels.has(dm) && !candidateModels.includes(dm)) {
+                candidateModels.push(dm);
+              }
+            }
+            lastError = new Error(`Model ${modelName} không khả dụng (404): ${detail}`);
+            break; // Chuyển sang model tiếp theo trong danh sách
+          }
+
+          if (res.status === 400 && cfgIdx === 0 && detail.toLowerCase().includes('responsemimetype')) {
+            continue;
+          }
+          if (res.status === 400 || res.status === 403) {
+            throw new Error(`API Key không hợp lệ hoặc bị từ chối (${res.status}): ${detail || 'Kiểm tra lại Gemini API Key'}`);
+          }
+          if (res.status === 429) {
+            throw new Error('API đang chạm giới hạn lượt gọi (429). Vui lòng đợi khoảng 15 giây rồi bấm thử lại.');
+          }
+          throw new Error(`Lỗi máy chủ Gemini (HTTP ${res.status}): ${detail}`);
+        }
+
+        const data = await res.json();
+        const candidate = data?.candidates?.[0];
+        if (!candidate) {
+          throw new Error('Gemini không trả về kết quả (có thể nội dung bị chặn hoặc rỗng).');
+        }
+        if (candidate.finishReason === 'MAX_TOKENS') {
+          throw new Error('Lời giải quá dài vượt giới hạn phản hồi. Hãy thử yêu cầu AI viết súc tích hơn.');
+        }
+
+        const rawText = candidate?.content?.parts?.map((p) => p.text || '').join('') || '';
+        return extractAndParseJson(rawText);
+      } catch (err) {
+        lastError = err;
+        // Nếu là lỗi xác thực hoặc quá tải 429 thì dừng ngay để báo cho người dùng
+        if (err.message?.includes('403') || err.message?.includes('429') || err.message?.includes('API Key không hợp lệ')) {
+          throw err;
+        }
+      }
     }
   }
 
@@ -367,7 +413,6 @@ Hãy giữ nguyên toàn bộ cấu trúc JSON và các phần đã tốt, CHỈ
 
   const parsed = await callGeminiJsonCore([{ text: prompt }], apiKey);
   const normalized = normalizeProblemData(parsed, currentDraft.problemText);
-  // Giữ nguyên ID và metadata của bản nháp
   return {
     ...normalized,
     id: currentDraft.id,
