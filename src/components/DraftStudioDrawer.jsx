@@ -27,7 +27,8 @@ import {
 } from '../services/geminiService.js';
 import {
   saveLessonDirectToGithub,
-  downloadLessonZipBackup
+  downloadLessonZipBackup,
+  buildUnifiedAudioPackage
 } from '../services/githubStorageService.js';
 
 const QUICK_EDIT_SUGGESTIONS = [
@@ -82,7 +83,7 @@ function parseLessonJsonText(rawText) {
 }
 
 /**
- * Chuẩn hóa dữ liệu bài toán nạp từ Gem để tương thích 100% với Canvas và kho bài mẫu
+ * Chuẩn hóa dữ liệu bài toán nạp từ tệp/thư mục để tương thích 100% với Canvas và kho bài mẫu
  */
 function normalizeImportedLesson(raw, fallbackProblemText = '') {
   if (!raw || typeof raw !== 'object') {
@@ -188,9 +189,19 @@ function normalizeImportedLesson(raw, fallbackProblemText = '') {
       }))
     : [];
 
+  const audioTimeline = Array.isArray(raw.audioTimeline)
+    ? raw.audioTimeline.map((c, idx) => ({
+        stepIndex: Number.isFinite(Number(c.stepIndex)) ? Number(c.stepIndex) : idx,
+        startSec: Number(c.startSec) || 0,
+        endSec: Number(c.endSec) || 0
+      }))
+    : [];
+
   return {
     id: String(raw.id || `bai-toan-${Date.now()}`).trim(),
     hasStaticAudio: Boolean(raw.hasStaticAudio),
+    audioFile: raw.audioFile ? String(raw.audioFile) : '',
+    audioTimeline,
     grade,
     topic: String(raw.topic || '').trim(),
     title: String(raw.title || '').trim(),
@@ -314,6 +325,51 @@ async function decodeAudioBytesToEntry(audioBytes, fileName, audioCtx) {
   };
 }
 
+/**
+ * Cắt các đoạn âm thanh từng bước từ 1 file full_audio đã giải mã kèm audioTimeline
+ */
+async function sliceUnifiedAudioToStepMap(audioBytes, fileName, audioTimeline, totalSteps, audioCtx) {
+  const ext = fileName.split('.').pop()?.toLowerCase() || 'mp3';
+  const mime =
+    ext === 'wav'
+      ? 'audio/wav'
+      : ext === 'ogg'
+      ? 'audio/ogg'
+      : ext === 'm4a'
+      ? 'audio/mp4'
+      : 'audio/mpeg';
+
+  const fullBlob = new Blob([audioBytes], { type: mime });
+  const unifiedUrl = URL.createObjectURL(fullBlob);
+  const arrayBuf = await fullBlob.arrayBuffer();
+  const decoded = await audioCtx.decodeAudioData(arrayBuf);
+  const floatData = decoded.getChannelData(0);
+  const sr = decoded.sampleRate;
+
+  const stepMap = new Map();
+  for (const cue of audioTimeline) {
+    const idx = cue.stepIndex;
+    if (idx < 0 || idx >= totalSteps) continue;
+    const startSample = Math.max(0, Math.floor(cue.startSec * sr));
+    const endSample = Math.min(floatData.length, Math.ceil(cue.endSec * sr));
+    if (endSample <= startSample) continue;
+    const sliceLen = endSample - startSample;
+    const pcm16 = new Int16Array(sliceLen);
+    for (let s = 0; s < sliceLen; s++) {
+      const clamped = Math.max(-1, Math.min(1, floatData[startSample + s]));
+      pcm16[s] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
+    }
+    stepMap.set(idx, {
+      url: '', // Sẽ phát trực tiếp qua unifiedUrl
+      pcm16,
+      sampleRate: sr,
+      durationSec: Number((sliceLen / sr).toFixed(2))
+    });
+  }
+
+  return { unifiedUrl, stepMap };
+}
+
 export default function DraftStudioDrawer({
   isOpen,
   onClose,
@@ -375,7 +431,47 @@ export default function DraftStudioDrawer({
   };
 
   /**
-   * Nạp gói bài học từ tệp .zip, data.json (+ .mp3), hoặc nguyên thư mục từ Skill
+   * Tự động ghép lại 1 tệp âm thanh thống nhất + mốc thời gian mỗi khi draftAudioMap thay đổi
+   */
+  const rebuildUnifiedDraftAudio = async (baseProb, nextMap) => {
+    if (!baseProb) return baseProb;
+    const totalSteps =
+      (baseProb.drawingSteps?.length || 0) + (baseProb.solutionSteps?.length || 0);
+
+    if (baseProb._unifiedAudioUrl) {
+      URL.revokeObjectURL(baseProb._unifiedAudioUrl);
+    }
+
+    if (!nextMap || nextMap.size === 0 || totalSteps === 0) {
+      const updated = {
+        ...baseProb,
+        hasStaticAudio: false,
+        audioTimeline: [],
+        _unifiedAudioUrl: null
+      };
+      setDraftProblem(updated);
+      onPreviewDraftOnMainCanvas(updated);
+      return updated;
+    }
+
+    const unified = await buildUnifiedAudioPackage(totalSteps, nextMap, 0.25);
+    if (!unified) return baseProb;
+
+    const unifiedUrl = URL.createObjectURL(unified.blob);
+    const updated = {
+      ...baseProb,
+      hasStaticAudio: true,
+      audioFile: unified.fileName,
+      audioTimeline: unified.audioTimeline,
+      _unifiedAudioUrl: unifiedUrl
+    };
+    setDraftProblem(updated);
+    onPreviewDraftOnMainCanvas(updated);
+    return updated;
+  };
+
+  /**
+   * Nạp gói bài học từ tệp .zip, data.json (+ .mp3), hoặc nguyên thư mục
    */
   const handleImportGemPackage = async (fileList, sourceLabel = '') => {
     const files = Array.from(fileList || []);
@@ -424,30 +520,72 @@ export default function DraftStudioDrawer({
         /\.(mp3|wav|ogg|m4a)$/i.test(e.path)
       );
 
+      // Giải phóng URL cũ
+      if (draftProblem?._unifiedAudioUrl) {
+        URL.revokeObjectURL(draftProblem._unifiedAudioUrl);
+      }
       draftAudioMap.forEach((entry) => {
         if (entry?.url) URL.revokeObjectURL(entry.url);
       });
 
       const nextAudioMap = new Map();
       const allSteps = buildAllStepsForAudio(normalized);
+      let finalDraftObj = normalized;
 
       if (audioEntriesRaw.length > 0 && allSteps.length > 0) {
-        audioEntriesRaw.sort((a, b) => {
-          const nameA = a.path.split('/').pop() || '';
-          const nameB = b.path.split('/').pop() || '';
-          return nameA.localeCompare(nameB, undefined, { numeric: true });
-        });
-
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         try {
-          for (const item of audioEntriesRaw) {
-            const baseName = item.path.split('/').pop() || '';
-            const numMatch = baseName.match(/step[_-]?(\d+)/i) || baseName.match(/^(\d+)/);
-            const targetIdx = numMatch ? parseInt(numMatch[1], 10) : nextAudioMap.size;
+          // Trường hợp A: Gói đã có sẵn 1 tệp full_audio + audioTimeline
+          const unifiedEntry = audioEntriesRaw.find((e) =>
+            /full_audio\.(mp3|wav|ogg|m4a)$/i.test(e.path)
+          );
 
-            if (targetIdx >= 0 && targetIdx < allSteps.length) {
-              const decodedEntry = await decodeAudioBytesToEntry(item.bytes, baseName, audioCtx);
-              nextAudioMap.set(targetIdx, decodedEntry);
+          if (unifiedEntry && normalized.audioTimeline?.length > 0) {
+            const baseName = unifiedEntry.path.split('/').pop() || 'full_audio.mp3';
+            const { unifiedUrl, stepMap } = await sliceUnifiedAudioToStepMap(
+              unifiedEntry.bytes,
+              baseName,
+              normalized.audioTimeline,
+              allSteps.length,
+              audioCtx
+            );
+            stepMap.forEach((v, k) => nextAudioMap.set(k, v));
+            finalDraftObj = {
+              ...normalized,
+              hasStaticAudio: true,
+              audioFile: baseName,
+              _unifiedAudioUrl: unifiedUrl
+            };
+          } else {
+            // Trường hợp B: Gói có nhiều file rời step_0.mp3, step_1.mp3... -> Tự ghép thành 1 file thống nhất!
+            audioEntriesRaw.sort((a, b) => {
+              const nameA = a.path.split('/').pop() || '';
+              const nameB = b.path.split('/').pop() || '';
+              return nameA.localeCompare(nameB, undefined, { numeric: true });
+            });
+
+            for (const item of audioEntriesRaw) {
+              const baseName = item.path.split('/').pop() || '';
+              const numMatch = baseName.match(/step[_-]?(\d+)/i) || baseName.match(/^(\d+)/);
+              const targetIdx = numMatch ? parseInt(numMatch[1], 10) : nextAudioMap.size;
+
+              if (targetIdx >= 0 && targetIdx < allSteps.length) {
+                const decodedEntry = await decodeAudioBytesToEntry(item.bytes, baseName, audioCtx);
+                nextAudioMap.set(targetIdx, decodedEntry);
+              }
+            }
+
+            if (nextAudioMap.size > 0) {
+              const unified = await buildUnifiedAudioPackage(allSteps.length, nextAudioMap, 0.2);
+              if (unified) {
+                finalDraftObj = {
+                  ...normalized,
+                  hasStaticAudio: true,
+                  audioFile: unified.fileName,
+                  audioTimeline: unified.audioTimeline,
+                  _unifiedAudioUrl: URL.createObjectURL(unified.blob)
+                };
+              }
             }
           }
         } finally {
@@ -455,12 +593,12 @@ export default function DraftStudioDrawer({
         }
       }
 
-      setDraftProblem(normalized);
+      setDraftProblem(finalDraftObj);
       setDraftAudioMap(nextAudioMap);
-      setProblemInput(normalized.problemText || '');
-      setSaveGrade(normalized.grade || 'Toán 7');
-      setSaveTopic(normalized.topic || '');
-      setSaveTitle(normalized.title || '');
+      setProblemInput(finalDraftObj.problemText || '');
+      setSaveGrade(finalDraftObj.grade || 'Toán 7');
+      setSaveTopic(finalDraftObj.topic || '');
+      setSaveTitle(finalDraftObj.title || '');
 
       const displaySource =
         sourceLabel ||
@@ -474,16 +612,16 @@ export default function DraftStudioDrawer({
       setChatHistory([
         {
           role: 'ai',
-          text: `Đã nạp thành công gói "${displaySource}" (${normalized.geometry.points.length} điểm, ${normalized.drawingSteps.length} bước vẽ, ${normalized.solutionSteps.length} bước giải${
-            nextAudioMap.size > 0 ? `, kèm ${nextAudioMap.size} tệp âm thanh` : ''
+          text: `Đã nạp thành công gói "${displaySource}" (${finalDraftObj.geometry.points.length} điểm, ${finalDraftObj.drawingSteps.length} bước vẽ, ${finalDraftObj.solutionSteps.length} bước giải${
+            nextAudioMap.size > 0 ? `, đã ghép thành 1 luồng âm thanh đồng bộ ${nextAudioMap.size} mốc thời gian` : ''
           }). Thầy điền/kiểm tra Khối lớp, Dạng toán, Tên bài bên dưới rồi bấm "Lưu ngay vào bài mẫu"!`
         }
       ]);
 
-      onPreviewDraftOnMainCanvas(normalized);
+      onPreviewDraftOnMainCanvas(finalDraftObj);
       showToast(
         `Đã nạp đề thành công!${
-          nextAudioMap.size > 0 ? ` Đã gắn sẵn ${nextAudioMap.size} file âm thanh.` : ''
+          nextAudioMap.size > 0 ? ` Đã đồng bộ sẵn ${nextAudioMap.size} mốc âm thanh.` : ''
         }`
       );
     } catch (err) {
@@ -572,8 +710,15 @@ export default function DraftStudioDrawer({
         userInstruction: instruction,
         apiKey: geminiApiKey.trim()
       });
-      setDraftProblem(updated);
-      onPreviewDraftOnMainCanvas(updated);
+      const preserved = {
+        ...updated,
+        hasStaticAudio: draftProblem.hasStaticAudio,
+        audioFile: draftProblem.audioFile,
+        audioTimeline: draftProblem.audioTimeline,
+        _unifiedAudioUrl: draftProblem._unifiedAudioUrl
+      };
+      setDraftProblem(preserved);
+      onPreviewDraftOnMainCanvas(preserved);
       setChatHistory((prev) => [
         ...prev,
         {
@@ -620,7 +765,8 @@ export default function DraftStudioDrawer({
         const nextMap = new Map(draftAudioMap);
         nextMap.set(singleStepIndex, singleRes);
         setDraftAudioMap(nextMap);
-        showToast(`Đã tạo xong âm thanh bước ${singleStepIndex + 1}!`);
+        await rebuildUnifiedDraftAudio(draftProblem, nextMap);
+        showToast(`Đã tạo xong âm thanh bước ${singleStepIndex + 1} và ghép vào tệp chung!`);
       } else {
         const nextMap = new Map(draftAudioMap);
         let createdCount = 0;
@@ -641,7 +787,9 @@ export default function DraftStudioDrawer({
           setDraftAudioMap(new Map(nextMap));
           createdCount++;
         }
-        showToast(`Hoàn tất! Đã có đủ ${nextMap.size}/${allSteps.length} đoạn thuyết minh${createdCount > 0 ? ` (tạo mới ${createdCount} bước)` : ''}.`);
+        setAudioProgressText('Đang ghép thành 1 tệp âm thanh đồng bộ...');
+        await rebuildUnifiedDraftAudio(draftProblem, nextMap);
+        showToast(`Hoàn tất! Đã ghép đủ ${nextMap.size}/${allSteps.length} đoạn thuyết minh thành 1 tệp duy nhất${createdCount > 0 ? ` (tạo mới ${createdCount} bước)` : ''}.`);
       }
       setAudioProgressText('');
     } catch (err) {
@@ -673,7 +821,8 @@ export default function DraftStudioDrawer({
         }
       }
       setDraftAudioMap(nextMap);
-      showToast(`Đã nạp ${files.length} tệp âm thanh từ máy tính!`);
+      await rebuildUnifiedDraftAudio(draftProblem, nextMap);
+      showToast(`Đã nạp ${files.length} tệp âm thanh và ghép thành 1 tệp đồng bộ!`);
     } catch (err) {
       setErrorBanner(`Lỗi đọc file âm thanh: ${err.message}`);
     } finally {
@@ -683,6 +832,9 @@ export default function DraftStudioDrawer({
   };
 
   const handleDiscardDraft = () => {
+    if (draftProblem?._unifiedAudioUrl) {
+      URL.revokeObjectURL(draftProblem._unifiedAudioUrl);
+    }
     draftAudioMap.forEach((entry) => {
       if (entry?.url) URL.revokeObjectURL(entry.url);
     });
@@ -727,7 +879,7 @@ export default function DraftStudioDrawer({
       });
 
       setGithubProgressText('');
-      showToast(`Đã lưu bài "${saveTitle}" thẳng lên GitHub! Web sẽ tự cập nhật sau ~30 giây.`);
+      showToast(`Đã lưu bài "${saveTitle}" (1 file âm thanh duy nhất) lên GitHub!`);
       onLessonSavedToGithub(result.lesson, result.catalogItem);
     } catch (err) {
       setErrorBanner(err.message || 'Lỗi khi lưu bài lên GitHub.');
@@ -751,9 +903,31 @@ export default function DraftStudioDrawer({
         timelineItems: allSteps,
         audioEntriesMap: draftAudioMap
       });
-      showToast('Đã tải gói bài học (.zip) về máy!');
+      showToast('Đã tải gói bài học (.zip với 1 file full_audio.mp3) về máy!');
     } catch (err) {
       setErrorBanner(err.message);
+    }
+  };
+
+  const previewSingleCue = (idx) => {
+    const entry = draftAudioMap.get(idx);
+    if (entry?.url) {
+      new Audio(entry.url).play();
+      return;
+    }
+    const cue = draftProblem?.audioTimeline?.find((c) => c.stepIndex === idx);
+    if (draftProblem?._unifiedAudioUrl && cue) {
+      const audio = new Audio(draftProblem._unifiedAudioUrl);
+      audio.currentTime = cue.startSec;
+      audio.play();
+      const checkStop = () => {
+        if (audio.currentTime >= cue.endSec || audio.paused) {
+          audio.pause();
+        } else {
+          requestAnimationFrame(checkStop);
+        }
+      };
+      requestAnimationFrame(checkStop);
     }
   };
 
@@ -771,7 +945,7 @@ export default function DraftStudioDrawer({
           <div>
             <h2 className="text-sm font-bold text-white">Nạp Đề Mới & Hiệu Chỉnh Bài Mẫu</h2>
             <p className="text-[11px] text-slate-400">
-              Nạp từ file/thư mục Skill hoặc tạo trực tiếp bằng AI
+              Tự động ghép 1 file âm thanh duy nhất + mốc thời gian chuẩn xác
             </p>
           </div>
         </div>
@@ -847,7 +1021,7 @@ export default function DraftStudioDrawer({
                   Chọn tệp .ZIP hoặc data.json
                 </div>
                 <div className="text-[11px] text-slate-400">
-                  Chọn 1 file .zip hoặc chọn cùng lúc data.json + các file .mp3
+                  Hỗ trợ cả full_audio.mp3 lẫn các tệp step_*.mp3
                 </div>
               </button>
 
@@ -864,7 +1038,7 @@ export default function DraftStudioDrawer({
                   Chọn cả Thư mục bài học
                 </div>
                 <div className="text-[11px] text-slate-400">
-                  Tự quét data.json & thư mục con audio/step_*.mp3 bên trong
+                  Tự động ghép thành 1 file âm thanh duy nhất
                 </div>
               </button>
             </div>
@@ -897,7 +1071,7 @@ export default function DraftStudioDrawer({
             {isImportingFiles && (
               <div className="flex items-center justify-center gap-2 py-2 text-xs text-emerald-300">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Đang giải nén và kiểm tra cấu trúc hình vẽ, lời giải, âm thanh...</span>
+                <span>Đang giải nén, ghép âm thanh và đồng bộ mốc thời gian...</span>
               </div>
             )}
           </div>
@@ -972,7 +1146,7 @@ export default function DraftStudioDrawer({
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                 <FileJson className="w-3.5 h-3.5" />
-                <span>Thông tin lưu kho bài mẫu (Chỉ cần điền 3 mục này)</span>
+                <span>Thông tin lưu kho bài mẫu</span>
               </span>
               <button
                 onClick={() => onPreviewDraftOnMainCanvas(draftProblem)}
@@ -1033,30 +1207,30 @@ export default function DraftStudioDrawer({
               ) : (
                 <>
                   <Github className="w-4 h-4" />
-                  <span>Lưu ngay vào bài mẫu (GitHub)</span>
+                  <span>Lưu ngay vào bài mẫu (1 tệp full_audio.mp3)</span>
                 </>
               )}
             </button>
           </div>
         )}
 
-        {/* QUẢN LÝ ÂM THANH TỪNG BƯỚC */}
+        {/* QUẢN LÝ ÂM THANH & MỐC THỜI GIAN */}
         {draftProblem && (
           <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                 <Headphones className="w-3.5 h-3.5" />
-                <span>Âm thanh ({readyAudioCount}/{allAudioSteps.length} bước)</span>
+                <span>Mốc thời gian âm thanh ({readyAudioCount}/{allAudioSteps.length} bước)</span>
               </span>
 
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => mp3ImportInputRef.current?.click()}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700"
-                  title="Chọn thêm các file step_0.mp3, step_1.mp3... từ máy tính"
+                  title="Chọn thêm các file MP3 từ máy tính"
                 >
                   <FileAudio className="w-3.5 h-3.5" />
-                  <span>Nạp thêm MP3</span>
+                  <span>Nạp MP3</span>
                 </button>
                 <button
                   onClick={() => handleRunStage2GenerateAudio(null)}
@@ -1085,28 +1259,35 @@ export default function DraftStudioDrawer({
               </div>
             )}
 
-            <div className="max-h-40 overflow-y-auto divide-y divide-slate-800/80 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+            <div className="max-h-44 overflow-y-auto divide-y divide-slate-800/80 rounded-xl bg-slate-950 border border-slate-800 text-xs">
               {allAudioSteps.map((st, idx) => {
                 const entry = draftAudioMap.get(idx);
+                const cue = draftProblem.audioTimeline?.find((c) => c.stepIndex === idx);
                 return (
                   <div key={idx} className="px-3 py-2 flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-slate-200 truncate">{st.label}</div>
+                      <div className="font-semibold text-slate-200 truncate flex items-center gap-2">
+                        <span>{st.label}</span>
+                        {cue && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-sky-300">
+                            {cue.startSec.toFixed(1)}s → {cue.endSec.toFixed(1)}s
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[11px] text-slate-400 truncate">{st.voiceText}</div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {entry?.url ? (
+                      {entry || cue ? (
                         <button
-                          onClick={() => new Audio(entry.url).play()}
+                          onClick={() => previewSingleCue(idx)}
                           className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[11px] font-medium"
                         >
-                          Nghe ({entry.durationSec?.toFixed(1)}s)
+                          Nghe ({entry?.durationSec?.toFixed(1) || (cue ? (cue.endSec - cue.startSec).toFixed(1) : '0')}s)
                         </button>
                       ) : (
                         <button
                           onClick={() => speakVietnameseBrowserFallback(st.voiceText)}
                           className="px-2 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-[11px]"
-                          title="Nghe thử bằng giọng đọc miễn phí của trình duyệt"
                         >
                           Nghe thử
                         </button>
@@ -1210,7 +1391,7 @@ export default function DraftStudioDrawer({
             <button
               onClick={handleDownloadZip}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
-              title="Tải gói file rời về máy tính"
+              title="Tải gói file rời gồm 1 tệp full_audio.mp3 về máy tính"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Tải ZIP</span>

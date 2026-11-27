@@ -28,10 +28,17 @@ import {
   saveGithubConfigToLocal,
   testGithubConnection
 } from './services/githubStorageService.js';
-import { generateStepAudioTTS } from './services/geminiService.js';
 
 const API_KEY_STORAGE = 'toan_hinh_gemini_api_key';
 const GRADES = ['Toán 6', 'Toán 7', 'Toán 8', 'Toán 9'];
+const PLAYBACK_RATES = [1, 1.25, 1.5, 0.85];
+
+function formatSecondsMMSS(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const mins = Math.floor(s / 60);
+  const secs = s % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
 
 export default function App() {
   // Cấu hình API Key & GitHub
@@ -60,15 +67,24 @@ export default function App() {
   const [stepProgress, setStepProgress] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [showTools, setShowTools] = useState(true);
   const [showFullFigure, setShowFullFigure] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [toastMsg, setToastMsg] = useState('');
 
-  const audioObjRef = useRef(null);
+  // Trạng thái thanh tiến trình 1 file âm thanh duy nhất
+  const [audioReady, setAudioReady] = useState(false);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+
+  // Phần tử Audio tải trước (preload="auto") duy nhất
+  const masterAudioRef = useRef(null);
+  const legacyStepAudioRef = useRef(null);
   const animFrameRef = useRef(null);
   const activeStepBoxRef = useRef(null);
+  const lastSyncedGlobalStepRef = useRef(-1);
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -117,15 +133,162 @@ export default function App() {
     return gradeCatalog.filter((item) => item.topic === selectedTopic);
   }, [gradeCatalog, selectedTopic]);
 
+  const totalDrawingSteps = activeProblem?.drawingSteps?.length || 0;
+  const totalSolutionSteps = activeProblem?.solutionSteps?.length || 0;
+
+  // Xác định nguồn 1 file âm thanh duy nhất & bảng mốc thời gian của bài hiện tại
+  const unifiedAudioConfig = useMemo(() => {
+    if (!activeProblem) return null;
+
+    // 1. Bản nháp trong RAM đã có sẵn Blob URL thống nhất
+    if (activeProblem._unifiedAudioUrl && Array.isArray(activeProblem.audioTimeline) && activeProblem.audioTimeline.length > 0) {
+      return {
+        src: activeProblem._unifiedAudioUrl,
+        timeline: activeProblem.audioTimeline
+      };
+    }
+
+    // 2. Bài mẫu tĩnh đã có 1 tệp full_audio.mp3 + audioTimeline
+    if (
+      activeProblem.hasStaticAudio &&
+      activeProblem.audioBasePath &&
+      Array.isArray(activeProblem.audioTimeline) &&
+      activeProblem.audioTimeline.length > 0
+    ) {
+      const fileName = activeProblem.audioFile || 'full_audio.mp3';
+      return {
+        src: `${activeProblem.audioBasePath}/${fileName}`,
+        timeline: activeProblem.audioTimeline
+      };
+    }
+
+    return null;
+  }, [activeProblem]);
+
+  // TẢI TRƯỚC (PRELOAD) NGAY KHI MỞ BÀI HỌC -> BẤM PHÁT LÀ ĐỌC TỨC THÌ 0ms ĐỘ TRỄ
+  useEffect(() => {
+    setIsPlaying(false);
+    setAudioReady(false);
+    setAudioCurrentTime(0);
+    setAudioDuration(0);
+    lastSyncedGlobalStepRef.current = -1;
+
+    if (legacyStepAudioRef.current) {
+      legacyStepAudioRef.current.pause();
+      legacyStepAudioRef.current = null;
+    }
+
+    const existing = masterAudioRef.current;
+    if (existing) {
+      existing.pause();
+      existing.removeAttribute('src');
+      existing.load();
+    }
+
+    if (!unifiedAudioConfig?.src) {
+      masterAudioRef.current = null;
+      return;
+    }
+
+    const audio = new Audio();
+    audio.preload = 'auto';
+    audio.src = unifiedAudioConfig.src;
+    audio.muted = isMuted;
+    audio.playbackRate = playbackRate;
+
+    const handleLoadedMetadata = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setAudioDuration(audio.duration);
+      } else {
+        const lastCue = unifiedAudioConfig.timeline[unifiedAudioConfig.timeline.length - 1];
+        if (lastCue?.endSec) setAudioDuration(lastCue.endSec);
+      }
+      setAudioReady(true);
+    };
+
+    const handleCanPlayThrough = () => {
+      setAudioReady(true);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setStepProgress(1);
+    };
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('canplaythrough', handleCanPlayThrough);
+    audio.addEventListener('ended', handleEnded);
+
+    audio.load();
+    masterAudioRef.current = audio;
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('canplaythrough', handleCanPlayThrough);
+      audio.removeEventListener('ended', handleEnded);
+      audio.pause();
+    };
+  }, [unifiedAudioConfig]);
+
+  // Đồng bộ nút Tắt tiếng & Tốc độ phát ngay lập tức với phần tử Audio
+  useEffect(() => {
+    if (masterAudioRef.current) {
+      masterAudioRef.current.muted = isMuted;
+    }
+    if (legacyStepAudioRef.current) {
+      legacyStepAudioRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (masterAudioRef.current) {
+      masterAudioRef.current.playbackRate = playbackRate;
+    }
+    if (legacyStepAudioRef.current) {
+      legacyStepAudioRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
   const stopPlayback = () => {
     setIsPlaying(false);
-    if (audioObjRef.current) {
-      audioObjRef.current.pause();
-      audioObjRef.current = null;
+    if (masterAudioRef.current) {
+      masterAudioRef.current.pause();
+    }
+    if (legacyStepAudioRef.current) {
+      legacyStepAudioRef.current.pause();
+      legacyStepAudioRef.current = null;
     }
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
+    }
+  };
+
+  // Nhảy chính xác tới mốc thời gian của một bước bất kỳ trong 1 file âm thanh duy nhất
+  const jumpToGlobalStep = (targetGlobalIdx, keepPlaying = false) => {
+    const safeGlobal = Math.max(
+      0,
+      Math.min(totalDrawingSteps + totalSolutionSteps - 1, targetGlobalIdx)
+    );
+
+    if (safeGlobal < totalDrawingSteps) {
+      setMode('drawing');
+      setCurrentStepIndex(safeGlobal);
+    } else {
+      setMode('solving');
+      setCurrentStepIndex(safeGlobal - totalDrawingSteps);
+    }
+    lastSyncedGlobalStepRef.current = safeGlobal;
+    setStepProgress(keepPlaying ? 0 : 1);
+
+    if (unifiedAudioConfig?.timeline && masterAudioRef.current) {
+      const cue =
+        unifiedAudioConfig.timeline.find((c) => c.stepIndex === safeGlobal) ||
+        unifiedAudioConfig.timeline[safeGlobal];
+      if (cue) {
+        masterAudioRef.current.currentTime = cue.startSec;
+        setAudioCurrentTime(cue.startSec);
+      }
     }
   };
 
@@ -144,9 +307,6 @@ export default function App() {
       setIsLoadingLesson(false);
     }
   };
-
-  const totalDrawingSteps = activeProblem?.drawingSteps?.length || 0;
-  const totalSolutionSteps = activeProblem?.solutionSteps?.length || 0;
 
   const globalStepIndex =
     mode === 'drawing' ? currentStepIndex : totalDrawingSteps + currentStepIndex;
@@ -168,12 +328,100 @@ export default function App() {
     }
   }, [mode, currentStepIndex]);
 
-  // Chạy hiệu ứng vẽ + âm thanh từng bước khi nhấn Phát
+  // =========================================================================
+  // CHẾ ĐỘ 1 (ƯU TIÊN CAO NHẤT): ĐỒNG BỘ 60FPS THEO 1 FILE ÂM THANH DUY NHẤT
+  // =========================================================================
   useEffect(() => {
-    if (!isPlaying || !activeProblem) return;
+    if (!isPlaying || !activeProblem || !unifiedAudioConfig || !masterAudioRef.current) {
+      return;
+    }
+
+    const audio = masterAudioRef.current;
+    const timeline = unifiedAudioConfig.timeline;
+    let cancelled = false;
+
+    // Nếu âm thanh đã chạy hết bài mà bấm Phát lại -> quay về từ đầu (0.0s)
+    const totalDur =
+      audioDuration || timeline[timeline.length - 1]?.endSec || audio.duration || 0;
+    if (totalDur > 0 && audio.currentTime >= totalDur - 0.15) {
+      audio.currentTime = 0;
+      lastSyncedGlobalStepRef.current = -1;
+    }
+
+    audio.muted = isMuted;
+    audio.playbackRate = playbackRate;
+    audio.play().catch((err) => {
+      if (!cancelled) {
+        setIsPlaying(false);
+        showToast(`Trình duyệt chặn tự phát âm thanh: ${err.message}`);
+      }
+    });
+
+    const syncLoop = () => {
+      if (cancelled) return;
+      const t = audio.currentTime;
+      setAudioCurrentTime(t);
+
+      // Tìm mốc bước tương ứng với thời điểm t hiện tại
+      let activeCue = timeline[0];
+      for (let i = 0; i < timeline.length; i++) {
+        const c = timeline[i];
+        if (t >= c.startSec && t < c.endSec) {
+          activeCue = c;
+          break;
+        }
+        if (t >= c.endSec) {
+          activeCue = c;
+        }
+      }
+
+      if (activeCue) {
+        const gIdx = activeCue.stepIndex;
+        if (lastSyncedGlobalStepRef.current !== gIdx) {
+          lastSyncedGlobalStepRef.current = gIdx;
+          if (gIdx < totalDrawingSteps) {
+            setMode('drawing');
+            setCurrentStepIndex(gIdx);
+          } else {
+            setMode('solving');
+            setCurrentStepIndex(gIdx - totalDrawingSteps);
+          }
+        }
+
+        // Tính tiến độ nét vẽ khớp chính xác với thời lượng đọc của bước đó
+        const cueSpan = Math.max(0.15, activeCue.endSec - activeCue.startSec);
+        const elapsedInCue = Math.max(0, t - activeCue.startSec);
+        // Hoàn thành nét vẽ ở 88% thời lượng câu nói để học sinh kịp nhìn rõ hình hoàn chỉnh
+        const p = Math.min(1, elapsedInCue / (cueSpan * 0.88));
+        setStepProgress(p);
+      }
+
+      if (!audio.paused && !audio.ended) {
+        animFrameRef.current = requestAnimationFrame(syncLoop);
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(syncLoop);
+
+    return () => {
+      cancelled = true;
+      audio.pause();
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, [isPlaying, activeProblem, unifiedAudioConfig, totalDrawingSteps]);
+
+  // =========================================================================
+  // CHẾ ĐỘ 2 (DỰ PHÒNG): CHO BÀI CŨ NHIỀU FILE RỜI HOẶC BÀI CHƯA CÓ ÂM THANH
+  // =========================================================================
+  useEffect(() => {
+    if (!isPlaying || !activeProblem || unifiedAudioConfig) {
+      return;
+    }
 
     let cancelled = false;
-    const stepDurationMs = mode === 'drawing' ? 2600 : 3200;
+    const stepDurationMs = (mode === 'drawing' ? 2600 : 3200) / playbackRate;
     const startTs = performance.now();
 
     const tickAnimation = (now) => {
@@ -208,64 +456,44 @@ export default function App() {
       }
     };
 
-    (async () => {
-      // Ưu tiên 1: Âm thanh vừa tạo trong Draft Studio (nếu đang xem bản nháp)
-      const isViewingDraft = draftProblem && activeProblem.id === draftProblem.id;
-      const draftAudio = isViewingDraft ? draftAudioMap.get(globalStepIndex) : null;
+    // Hỗ trợ bài cũ có các tệp step_0.mp3, step_1.mp3...
+    let legacyAudioUrl = null;
+    if (activeProblem.hasStaticAudio && activeProblem.audioBasePath) {
+      const manifestItem = activeProblem.audioManifest?.find((m) => m.stepIndex === globalStepIndex);
+      const fileName = manifestItem?.file || `step_${globalStepIndex}.mp3`;
+      legacyAudioUrl = `${activeProblem.audioBasePath}/${fileName}`;
+    }
 
-      let audioUrlToPlay = draftAudio?.url || null;
-
-      // Ưu tiên 2: File MP3 tĩnh lưu sẵn trên GitHub/Cloudflare Pages
-      if (!audioUrlToPlay && activeProblem.hasStaticAudio && activeProblem.audioBasePath) {
-        const manifestItem = activeProblem.audioManifest?.find((m) => m.stepIndex === globalStepIndex);
-        const fileName = manifestItem?.file || `step_${globalStepIndex}.mp3`;
-        audioUrlToPlay = `${activeProblem.audioBasePath}/${fileName}`;
-      }
-
-      // Ưu tiên 3: Gọi Gemini TTS trực tiếp nếu có API Key và chưa bật tắt tiếng
-      if (!audioUrlToPlay && !isMuted && geminiApiKey.trim() && currentNarrationText) {
-        try {
-          const generated = await generateStepAudioTTS({
-            text: currentNarrationText,
-            apiKey: geminiApiKey.trim()
-          });
-          if (!cancelled) audioUrlToPlay = generated.url;
-        } catch {
-          // Nếu chưa có audio thì chạy theo thời gian mặc định
-        }
-      }
-
-      if (cancelled) return;
-
-      if (audioUrlToPlay && !isMuted) {
-        const audio = new Audio(audioUrlToPlay);
-        audioObjRef.current = audio;
-        audio.onended = () => {
-          setStepProgress(1);
-          setTimeout(advanceToNextStep, 350);
-        };
-        audio.onerror = () => {
-          setTimeout(advanceToNextStep, stepDurationMs);
-        };
-        audio.play().catch(() => {
-          setTimeout(advanceToNextStep, stepDurationMs);
-        });
-      } else {
+    if (legacyAudioUrl) {
+      const audio = new Audio(legacyAudioUrl);
+      audio.muted = isMuted;
+      audio.playbackRate = playbackRate;
+      legacyStepAudioRef.current = audio;
+      audio.onended = () => {
+        setStepProgress(1);
+        setTimeout(advanceToNextStep, 200);
+      };
+      audio.onerror = () => {
         setTimeout(advanceToNextStep, stepDurationMs);
-      }
-    })();
+      };
+      audio.play().catch(() => {
+        setTimeout(advanceToNextStep, stepDurationMs);
+      });
+    } else {
+      setTimeout(advanceToNextStep, stepDurationMs);
+    }
 
     return () => {
       cancelled = true;
-      if (audioObjRef.current) {
-        audioObjRef.current.pause();
-        audioObjRef.current = null;
+      if (legacyStepAudioRef.current) {
+        legacyStepAudioRef.current.pause();
+        legacyStepAudioRef.current = null;
       }
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [isPlaying, mode, currentStepIndex, activeProblem]);
+  }, [isPlaying, mode, currentStepIndex, activeProblem, unifiedAudioConfig]);
 
   const handleSaveSettings = () => {
     const cleanKey = apiKeyDraft.trim();
@@ -291,6 +519,39 @@ export default function App() {
     }
   };
 
+  const handleTimelineScrub = (e) => {
+    if (!unifiedAudioConfig || !masterAudioRef.current || audioDuration <= 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetSec = ratio * audioDuration;
+    masterAudioRef.current.currentTime = targetSec;
+    setAudioCurrentTime(targetSec);
+
+    // Cập nhật ngay bước hiển thị kể cả khi đang tạm dừng
+    const timeline = unifiedAudioConfig.timeline;
+    const cue =
+      timeline.find((c) => targetSec >= c.startSec && targetSec < c.endSec) ||
+      timeline[timeline.length - 1];
+    if (cue) {
+      const gIdx = cue.stepIndex;
+      lastSyncedGlobalStepRef.current = gIdx;
+      if (gIdx < totalDrawingSteps) {
+        setMode('drawing');
+        setCurrentStepIndex(gIdx);
+      } else {
+        setMode('solving');
+        setCurrentStepIndex(gIdx - totalDrawingSteps);
+      }
+      const span = Math.max(0.15, cue.endSec - cue.startSec);
+      setStepProgress(Math.min(1, Math.max(0, (targetSec - cue.startSec) / (span * 0.88))));
+    }
+  };
+
+  const cyclePlaybackRate = () => {
+    const nextIdx = (PLAYBACK_RATES.indexOf(playbackRate) + 1) % PLAYBACK_RATES.length;
+    setPlaybackRate(PLAYBACK_RATES[nextIdx]);
+  };
+
   return (
     <div className="min-h-screen bg-[#0b1120] text-slate-100 flex flex-col">
       {/* Thanh điều hướng trên cùng */}
@@ -304,7 +565,7 @@ export default function App() {
               Giải & Vẽ Hình Toán Hình Học THCS
             </h1>
             <p className="text-[11px] text-slate-400">
-              Trực quan từng bước • Kho bài mẫu rời • Lưu tự động lên GitHub
+              Đồng bộ âm thanh tức thì • Kho bài mẫu rời • Lưu tự động lên GitHub
             </p>
           </div>
         </div>
@@ -433,117 +694,136 @@ export default function App() {
             ) : (
               <div className="w-full h-full rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col items-center justify-center gap-3 p-6 text-center">
                 <Sparkles className="w-8 h-8 text-amber-400" />
-                <p className="text-sm text-slate-300">Chưa có bài mẫu trong mục này. Bấm "Nạp đề mới (AI)" để tạo bài đầu tiên!</p>
+                <p className="text-sm text-slate-300">Chưa có bài mẫu trong mục này. Bấm "Nạp đề mới" để tạo bài đầu tiên!</p>
               </div>
             )}
           </div>
 
-          {/* Thanh điều khiển trình chiếu hình vẽ */}
+          {/* Thanh điều khiển trình chiếu hình vẽ + Thanh tua tiến trình âm thanh */}
           {activeProblem && (
-            <div className="px-3 py-2 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => {
-                    stopPlayback();
-                    setMode('drawing');
-                    setCurrentStepIndex(0);
-                    setStepProgress(1);
-                  }}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
-                  title="Về đầu bài"
-                >
-                  <SkipBack className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => {
-                    stopPlayback();
-                    if (currentStepIndex > 0) {
-                      setCurrentStepIndex((i) => i - 1);
-                      setStepProgress(1);
-                    } else if (mode === 'solving' && totalDrawingSteps > 0) {
-                      setMode('drawing');
-                      setCurrentStepIndex(totalDrawingSteps - 1);
-                      setStepProgress(1);
-                    }
-                  }}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
-                  title="Bước trước"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
+            <div className="px-3 py-2 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2 text-xs">
+              {/* Thanh tua mốc thời gian âm thanh (hiện khi bài có 1 file audio đồng bộ) */}
+              {unifiedAudioConfig && audioDuration > 0 && (
+                <div className="flex items-center gap-2.5 px-1">
+                  <span className="text-[11px] font-mono text-slate-400 w-10 text-right shrink-0">
+                    {formatSecondsMMSS(audioCurrentTime)}
+                  </span>
+                  <div
+                    onClick={handleTimelineScrub}
+                    className="relative flex-1 h-2 rounded-full bg-slate-800 cursor-pointer overflow-hidden group"
+                    title="Bấm vào vị trí bất kỳ để tua nhanh bài giảng"
+                  >
+                    <div
+                      className="h-full bg-gradient-to-r from-sky-400 to-emerald-400 rounded-full transition-[width] duration-75"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, (audioCurrentTime / audioDuration) * 100))}%`
+                      }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-mono text-slate-400 w-10 shrink-0">
+                    {formatSecondsMMSS(audioDuration)}
+                  </span>
+                </div>
+              )}
 
-                <button
-                  onClick={() => setIsPlaying((p) => !p)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold bg-sky-500 hover:bg-sky-400 text-slate-950"
-                >
-                  {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                  <span>{isPlaying ? 'Tạm dừng' : 'Phát bài giảng'}</span>
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      stopPlayback();
+                      jumpToGlobalStep(0, false);
+                    }}
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
+                    title="Về đầu bài"
+                  >
+                    <SkipBack className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const wasPlaying = isPlaying;
+                      if (!unifiedAudioConfig) stopPlayback();
+                      jumpToGlobalStep(globalStepIndex - 1, wasPlaying);
+                    }}
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
+                    title="Bước trước"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
 
-                <button
-                  onClick={() => {
-                    stopPlayback();
-                    if (mode === 'drawing') {
-                      if (currentStepIndex + 1 < totalDrawingSteps) {
-                        setCurrentStepIndex((i) => i + 1);
-                        setStepProgress(1);
-                      } else if (totalSolutionSteps > 0) {
-                        setMode('solving');
-                        setCurrentStepIndex(0);
-                        setStepProgress(1);
-                      }
-                    } else if (currentStepIndex + 1 < totalSolutionSteps) {
-                      setCurrentStepIndex((i) => i + 1);
-                      setStepProgress(1);
-                    }
-                  }}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
-                  title="Bước tiếp theo"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                  <button
+                    onClick={() => setIsPlaying((p) => !p)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold bg-sky-500 hover:bg-sky-400 text-slate-950"
+                  >
+                    {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    <span>{isPlaying ? 'Tạm dừng' : 'Phát bài giảng'}</span>
+                  </button>
 
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setShowFullFigure((v) => !v)}
-                  className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium ${
-                    showFullFigure
-                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                      : 'bg-slate-950 border-slate-800 text-slate-400'
-                  }`}
-                >
-                  <Eye className="w-3.5 h-3.5 inline mr-1" />
-                  Hình hoàn chỉnh
-                </button>
-                <button
-                  onClick={() => setShowTools((v) => !v)}
-                  className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium ${
-                    showTools
-                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                      : 'bg-slate-950 border-slate-800 text-slate-400'
-                  }`}
-                >
-                  Dụng cụ vẽ
-                </button>
-                <button
-                  onClick={() => setShowGrid((v) => !v)}
-                  className={`p-1.5 rounded-lg border ${
-                    showGrid
-                      ? 'bg-sky-500/20 border-sky-500/50 text-sky-300'
-                      : 'bg-slate-950 border-slate-800 text-slate-400'
-                  }`}
-                  title="Bật/tắt lưới tọa độ"
-                >
-                  <Grid className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setIsMuted((m) => !m)}
-                  className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-300"
-                  title={isMuted ? 'Bật âm thanh' : 'Tắt tiếng'}
-                >
-                  {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
-                </button>
+                  <button
+                    onClick={() => {
+                      const wasPlaying = isPlaying;
+                      if (!unifiedAudioConfig) stopPlayback();
+                      jumpToGlobalStep(globalStepIndex + 1, wasPlaying);
+                    }}
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
+                    title="Bước tiếp theo"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    onClick={cyclePlaybackRate}
+                    className="px-2 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 font-mono text-[11px] font-bold"
+                    title="Đổi tốc độ giảng bài"
+                  >
+                    {playbackRate}x
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setShowFullFigure((v) => !v)}
+                    className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium ${
+                      showFullFigure
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                        : 'bg-slate-950 border-slate-800 text-slate-400'
+                    }`}
+                  >
+                    <Eye className="w-3.5 h-3.5 inline mr-1" />
+                    Hình hoàn chỉnh
+                  </button>
+                  <button
+                    onClick={() => setShowTools((v) => !v)}
+                    className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium ${
+                      showTools
+                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                        : 'bg-slate-950 border-slate-800 text-slate-400'
+                    }`}
+                  >
+                    Dụng cụ vẽ
+                  </button>
+                  <button
+                    onClick={() => setShowGrid((v) => !v)}
+                    className={`p-1.5 rounded-lg border ${
+                      showGrid
+                        ? 'bg-sky-500/20 border-sky-500/50 text-sky-300'
+                        : 'bg-slate-950 border-slate-800 text-slate-400'
+                    }`}
+                    title="Bật/tắt lưới tọa độ"
+                  >
+                    <Grid className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setIsMuted((m) => !m)}
+                    className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-300"
+                    title={isMuted ? 'Bật âm thanh' : 'Tắt tiếng'}
+                  >
+                    {isMuted ? (
+                      <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                    ) : (
+                      <Volume2 className={`w-3.5 h-3.5 ${audioReady ? 'text-emerald-400' : 'text-sky-400'}`} />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -595,10 +875,9 @@ export default function App() {
               <div className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
                 <button
                   onClick={() => {
-                    stopPlayback();
-                    setMode('drawing');
-                    setCurrentStepIndex(0);
-                    setStepProgress(1);
+                    const wasPlaying = isPlaying;
+                    if (!unifiedAudioConfig) stopPlayback();
+                    jumpToGlobalStep(0, wasPlaying);
                   }}
                   className={`flex-1 py-1.5 rounded-lg font-bold transition ${
                     mode === 'drawing' ? 'bg-sky-500 text-slate-950' : 'text-slate-400 hover:text-white'
@@ -608,10 +887,9 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
-                    stopPlayback();
-                    setMode('solving');
-                    setCurrentStepIndex(0);
-                    setStepProgress(1);
+                    const wasPlaying = isPlaying;
+                    if (!unifiedAudioConfig) stopPlayback();
+                    jumpToGlobalStep(totalDrawingSteps, wasPlaying);
                   }}
                   className={`flex-1 py-1.5 rounded-lg font-bold transition ${
                     mode === 'solving' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'
@@ -631,9 +909,9 @@ export default function App() {
                           key={idx}
                           ref={active ? activeStepBoxRef : null}
                           onClick={() => {
-                            stopPlayback();
-                            setCurrentStepIndex(idx);
-                            setStepProgress(1);
+                            const wasPlaying = isPlaying;
+                            if (!unifiedAudioConfig) stopPlayback();
+                            jumpToGlobalStep(idx, wasPlaying);
                           }}
                           className={`p-2.5 rounded-xl border text-xs cursor-pointer transition ${
                             active
@@ -653,9 +931,9 @@ export default function App() {
                           key={idx}
                           ref={active ? activeStepBoxRef : null}
                           onClick={() => {
-                            stopPlayback();
-                            setCurrentStepIndex(idx);
-                            setStepProgress(1);
+                            const wasPlaying = isPlaying;
+                            if (!unifiedAudioConfig) stopPlayback();
+                            jumpToGlobalStep(totalDrawingSteps + idx, wasPlaying);
                           }}
                           className={`p-2.5 rounded-xl border text-xs sm:text-sm cursor-pointer transition whitespace-pre-line ${
                             active

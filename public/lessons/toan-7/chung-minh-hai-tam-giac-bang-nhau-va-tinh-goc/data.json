@@ -337,62 +337,64 @@
       "highlightPolygons": []
     }
   ],
-  "audioManifest": [
+  "updatedAt": "2026-11-27T09:29:01.810Z",
+  "audioFile": "full_audio.mp3",
+  "audioBasePath": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-tinh-goc/audio",
+  "audioTimeline": [
     {
       "stepIndex": 0,
-      "file": "step_0.mp3",
-      "durationSec": 4.34
+      "startSec": 0.0,
+      "endSec": 4.392
     },
     {
       "stepIndex": 1,
-      "file": "step_1.mp3",
-      "durationSec": 12.43
+      "startSec": 4.392,
+      "endSec": 16.884
     },
     {
       "stepIndex": 2,
-      "file": "step_2.mp3",
-      "durationSec": 8.88
+      "startSec": 16.884,
+      "endSec": 25.812
     },
     {
       "stepIndex": 3,
-      "file": "step_3.mp3",
-      "durationSec": 5.35
+      "startSec": 25.812,
+      "endSec": 31.212
     },
     {
       "stepIndex": 4,
-      "file": "step_4.mp3",
-      "durationSec": 3.89
+      "startSec": 31.212,
+      "endSec": 35.172
     },
     {
       "stepIndex": 5,
-      "file": "step_5.mp3",
-      "durationSec": 5.98
+      "startSec": 35.172,
+      "endSec": 41.22
     },
     {
       "stepIndex": 6,
-      "file": "step_6.mp3",
-      "durationSec": 4.44
+      "startSec": 41.22,
+      "endSec": 45.72
     },
     {
       "stepIndex": 7,
-      "file": "step_7.mp3",
-      "durationSec": 6.43
+      "startSec": 45.72,
+      "endSec": 52.2
     },
     {
       "stepIndex": 8,
-      "file": "step_8.mp3",
-      "durationSec": 8.78
+      "startSec": 52.2,
+      "endSec": 61.056
     },
     {
       "stepIndex": 9,
-      "file": "step_9.mp3",
-      "durationSec": 6.43
+      "startSec": 61.056,
+      "endSec": 67.536
     },
     {
       "stepIndex": 10,
-      "file": "step_10.mp3",
-      "durationSec": 6.98
+      "startSec": 67.536,
+      "endSec": 74.592
     }
-  ],
-  "updatedAt": "2026-11-27T09:29:01.810Z"
+  ]
 }

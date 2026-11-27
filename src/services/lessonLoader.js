@@ -1,7 +1,7 @@
 /* ============================================================================
    BỘ NẠP BÀI HỌC ĐỘNG TỪ THƯ MỤC TĨNH public/lessons/
    - Chỉ tải index.json nhẹ lúc khởi động
-   - Khi chọn bài nào mới tải data.json & audio của riêng bài đó
+   - Khi chọn bài nào mới tải data.json & 1 file âm thanh duy nhất của bài đó
    ============================================================================ */
 
 export async function fetchLessonsCatalog() {
@@ -24,8 +24,13 @@ export async function fetchLessonDetail(catalogItem) {
     throw new Error(`Không tải được dữ liệu bài học (${res.status}).`);
   }
   const lesson = await res.json();
+  const audioBasePath = catalogItem.audioBasePath || lesson.audioBasePath || '';
+  const audioFile = catalogItem.audioFile || lesson.audioFile || 'full_audio.mp3';
+
   return {
     ...lesson,
-    audioBasePath: catalogItem.audioBasePath || lesson.audioBasePath || ''
+    hasStaticAudio: Boolean(lesson.hasStaticAudio || catalogItem.hasStaticAudio),
+    audioBasePath,
+    audioFile
   };
 }

@@ -1,9 +1,10 @@
 /* ============================================================================
-   DỊCH VỤ LƯU TRỮ TRỰC TIẾP LÊN GITHUB (ATOMIC COMMIT QUA GIT TREES API)
+   DỊCH VỤ LƯU TRỮ TRỰC TIẾP LÊN GITHUB & ĐÓNG GÓI 1 FILE ÂM THANH DUY NHẤT
+   - Ghép toàn bộ lời giảng thành 1 tệp full_audio.mp3 + bảng mốc thời gian audioTimeline
    - Mỗi bài học lưu thành thư mục riêng:
      public/lessons/<lop>/<ten-bai-slug>/data.json
-     public/lessons/<lop>/<ten-bai-slug>/audio/step_0.mp3, step_1.mp3, ...
-   - Tự động cập nhật mục lục public/lessons/index.json chỉ trong 1 commit duy nhất
+     public/lessons/<lop>/<ten-bai-slug>/audio/full_audio.mp3
+   - Cập nhật mục lục public/lessons/index.json trong 1 commit duy nhất
    ============================================================================ */
 
 import { pcmToWavBlob } from './geminiService.js';
@@ -46,7 +47,7 @@ export function saveGithubConfigToLocal(cfg) {
 export function slugifyVietnamese(str) {
   return String(str || 'bai-toan')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd')
     .replace(/Đ/g, 'D')
     .toLowerCase()
@@ -80,7 +81,25 @@ export function loadExternalScript(src) {
 }
 
 /**
- * Nén PCM16 sang MP3 48kbps Mono siêu nhẹ (~4-6KB/giây)
+ * Chuẩn hóa tần số lấy mẫu PCM16 bằng nội suy tuyến tính nếu các bước khác sampleRate
+ */
+function resamplePcm16(pcm16, fromRate, toRate) {
+  if (!pcm16 || fromRate === toRate || !fromRate || !toRate) return pcm16;
+  const ratio = fromRate / toRate;
+  const outLen = Math.max(1, Math.round(pcm16.length / ratio));
+  const out = new Int16Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const srcPos = i * ratio;
+    const idx0 = Math.floor(srcPos);
+    const idx1 = Math.min(pcm16.length - 1, idx0 + 1);
+    const frac = srcPos - idx0;
+    out[i] = Math.round(pcm16[idx0] * (1 - frac) + pcm16[idx1] * frac);
+  }
+  return out;
+}
+
+/**
+ * Nén PCM16 sang MP3 48kbps Mono siêu nhẹ
  */
 export function encodePcm16ToMp3Blob(pcm16, sampleRate = 24000) {
   if (typeof window === 'undefined' || !window.lamejs || !window.lamejs.Mp3Encoder) {
@@ -97,10 +116,88 @@ export function encodePcm16ToMp3Blob(pcm16, sampleRate = 24000) {
     }
     const endBuf = encoder.flush();
     if (endBuf.length > 0) mp3Chunks.push(endBuf);
-    return new Blob(mp3Chunks, { type: 'audio/mp3' });
+    return new Blob(mp3Chunks, { type: 'audio/mpeg' });
   } catch {
     return null;
   }
+}
+
+/**
+ * Ghép tất cả các bước âm thanh thành 1 tệp âm thanh duy nhất + bảng mốc thời gian chính xác
+ */
+export async function buildUnifiedAudioPackage(totalSteps, audioEntriesMap, pauseSec = 0.25) {
+  if (!audioEntriesMap || audioEntriesMap.size === 0 || totalSteps <= 0) {
+    return null;
+  }
+
+  await loadExternalScript(LAMEJS_CDN).catch(() => null);
+
+  let targetSampleRate = 24000;
+  for (let i = 0; i < totalSteps; i++) {
+    const entry = audioEntriesMap.get(i);
+    if (entry?.sampleRate) {
+      targetSampleRate = entry.sampleRate;
+      break;
+    }
+  }
+
+  const pauseSamples = Math.round(pauseSec * targetSampleRate);
+  const chunks = [];
+  const audioTimeline = [];
+  let cursorSamples = 0;
+
+  for (let idx = 0; idx < totalSteps; idx++) {
+    const entry = audioEntriesMap.get(idx);
+    const startSec = Number((cursorSamples / targetSampleRate).toFixed(3));
+
+    if (entry?.pcm16 && entry.pcm16.length > 0) {
+      const normalizedPcm = resamplePcm16(entry.pcm16, entry.sampleRate || targetSampleRate, targetSampleRate);
+      chunks.push(normalizedPcm);
+      cursorSamples += normalizedPcm.length;
+
+      // Thêm khoảng nghỉ ngắn giữa các bước để giọng đọc tự nhiên
+      if (idx < totalSteps - 1 && pauseSamples > 0) {
+        chunks.push(new Int16Array(pauseSamples));
+        cursorSamples += pauseSamples;
+      }
+    } else {
+      // Nếu bước này chưa có audio, chèn khoảng lặng 2.5s để giữ nhịp đồng bộ
+      const fallbackSamples = Math.round(2.5 * targetSampleRate);
+      chunks.push(new Int16Array(fallbackSamples));
+      cursorSamples += fallbackSamples;
+    }
+
+    const endSec = Number((cursorSamples / targetSampleRate).toFixed(3));
+    audioTimeline.push({
+      stepIndex: idx,
+      startSec,
+      endSec
+    });
+  }
+
+  const totalSamples = chunks.reduce((acc, arr) => acc + arr.length, 0);
+  if (totalSamples === 0) return null;
+
+  const mergedPcm = new Int16Array(totalSamples);
+  let offset = 0;
+  for (const arr of chunks) {
+    mergedPcm.set(arr, offset);
+    offset += arr.length;
+  }
+
+  const mp3Blob = encodePcm16ToMp3Blob(mergedPcm, targetSampleRate);
+  const blob = mp3Blob || pcmToWavBlob(mergedPcm, targetSampleRate);
+  const ext = mp3Blob ? 'mp3' : 'wav';
+  const fileName = `full_audio.${ext}`;
+  const totalDurationSec = Number((totalSamples / targetSampleRate).toFixed(3));
+
+  return {
+    blob,
+    fileName,
+    ext,
+    audioTimeline,
+    totalDurationSec
+  };
 }
 
 function arrayBufferToBase64(buffer) {
@@ -179,7 +276,7 @@ async function createGithubBlob({ owner, repo, token, base64Content }) {
 }
 
 /**
- * Lưu toàn bộ bài học (data.json + audio/*.mp3 + index.json) thẳng lên GitHub trong 1 commit
+ * Lưu toàn bộ bài học (data.json + 1 file audio/full_audio.mp3 + index.json) thẳng lên GitHub
  */
 export async function saveLessonDirectToGithub({
   config,
@@ -193,9 +290,6 @@ export async function saveLessonDirectToGithub({
   if (!token || !owner || !repo) {
     throw new Error('Chưa cấu hình GitHub Token / Repository trong phần Cài đặt.');
   }
-
-  onProgress?.('Đang tải bộ nén âm thanh MP3...');
-  await loadExternalScript(LAMEJS_CDN).catch(() => null);
 
   const gradeSlug = slugifyVietnamese(metadata.grade || lessonData.grade || 'toan-7');
   const titleSlug = slugifyVietnamese(metadata.title || lessonData.title || 'bai-toan');
@@ -227,7 +321,7 @@ export async function saveLessonDirectToGithub({
   const commitData = await commitRes.json();
   const baseTreeSha = commitData.tree.sha;
 
-  // 2. Đọc public/lessons/index.json hiện tại trên repo (nếu đã có)
+  // 2. Đọc public/lessons/index.json hiện tại trên repo
   onProgress?.('Đang đọc mục lục bài mẫu hiện có...');
   let existingIndex = [];
   const indexRes = await fetch(
@@ -246,50 +340,53 @@ export async function saveLessonDirectToGithub({
     }
   }
 
-  // 3. Đóng gói các file âm thanh từng bước và tạo Git Blob
+  // 3. Ghép thành 1 file âm thanh duy nhất + bảng mốc thời gian
   const treeEntries = [];
-  const audioManifest = [];
   let hasAnyAudio = false;
+  let audioFile = 'full_audio.mp3';
+  let audioTimeline = [];
 
-  for (let idx = 0; idx < timelineItems.length; idx++) {
-    const audioEntry = audioEntriesMap.get(idx);
-    if (audioEntry?.pcm16) {
-      onProgress?.(`Đang nén & tải âm thanh bước ${idx + 1}/${timelineItems.length}...`);
-      const mp3Blob = encodePcm16ToMp3Blob(audioEntry.pcm16, audioEntry.sampleRate || 24000);
-      const finalBlob = mp3Blob || pcmToWavBlob(audioEntry.pcm16, audioEntry.sampleRate || 24000);
-      const ext = mp3Blob ? 'mp3' : 'wav';
-      const buf = await finalBlob.arrayBuffer();
+  if (audioEntriesMap && audioEntriesMap.size > 0) {
+    onProgress?.('Đang ghép & nén 1 tệp âm thanh duy nhất...');
+    const unified = await buildUnifiedAudioPackage(timelineItems.length, audioEntriesMap, 0.25);
+    if (unified) {
+      onProgress?.(`Đang tải tệp ${unified.fileName} (${unified.totalDurationSec.toFixed(1)}s) lên GitHub...`);
+      const buf = await unified.blob.arrayBuffer();
       const b64 = arrayBufferToBase64(buf);
       const blobSha = await createGithubBlob({ owner, repo, token, base64Content: b64 });
 
       treeEntries.push({
-        path: `${folderRelPath}/audio/step_${idx}.${ext}`,
+        path: `${folderRelPath}/audio/${unified.fileName}`,
         mode: '100644',
         type: 'blob',
         sha: blobSha
       });
 
-      audioManifest.push({
-        stepIndex: idx,
-        file: `step_${idx}.${ext}`,
-        durationSec: Number((audioEntry.durationSec || 0).toFixed(2))
-      });
       hasAnyAudio = true;
+      audioFile = unified.fileName;
+      audioTimeline = unified.audioTimeline;
     }
   }
 
-  // 4. Tạo file data.json hoàn chỉnh cho riêng bài học này
+  // 4. Tạo file data.json hoàn chỉnh (loại bỏ các trường tạm nội bộ bắt đầu bằng _)
   onProgress?.('Đang lưu tệp dữ liệu bài toán (data.json)...');
+  const cleanLessonData = Object.fromEntries(
+    Object.entries(lessonData).filter(([k]) => !k.startsWith('_'))
+  );
+
   const finalLessonJson = {
-    ...lessonData,
+    ...cleanLessonData,
     id: lessonId,
     grade: metadata.grade,
     topic: metadata.topic,
     title: metadata.title,
     hasStaticAudio: hasAnyAudio,
-    audioManifest,
+    audioBasePath: publicAudioBasePath,
+    audioFile: hasAnyAudio ? audioFile : '',
+    audioTimeline: hasAnyAudio ? audioTimeline : [],
     updatedAt: new Date().toISOString()
   };
+  delete finalLessonJson.audioManifest;
 
   const dataJsonSha = await createGithubBlob({
     owner,
@@ -313,6 +410,7 @@ export async function saveLessonDirectToGithub({
     title: metadata.title,
     path: publicJsonPath,
     audioBasePath: publicAudioBasePath,
+    audioFile: hasAnyAudio ? audioFile : '',
     hasStaticAudio: hasAnyAudio,
     updatedAt: finalLessonJson.updatedAt
   };
@@ -382,7 +480,7 @@ export async function saveLessonDirectToGithub({
 }
 
 /**
- * Tải gói bài học rời (.zip) về máy tính để lưu dự phòng
+ * Tải gói bài học rời (.zip) gồm data.json + 1 file audio/full_audio.mp3 + script edge-tts
  */
 export async function downloadLessonZipBackup({
   lessonData,
@@ -390,10 +488,7 @@ export async function downloadLessonZipBackup({
   timelineItems,
   audioEntriesMap
 }) {
-  await Promise.all([
-    loadExternalScript(LAMEJS_CDN).catch(() => null),
-    loadExternalScript(JSZIP_CDN)
-  ]);
+  await loadExternalScript(JSZIP_CDN);
 
   if (!window.JSZip) {
     throw new Error('Không tải được thư viện nén ZIP.');
@@ -404,34 +499,35 @@ export async function downloadLessonZipBackup({
   const folderPath = `public/lessons/${gradeSlug}/${titleSlug}`;
 
   const zip = new window.JSZip();
-  const audioManifest = [];
   let hasAnyAudio = false;
+  let audioFile = 'full_audio.mp3';
+  let audioTimeline = [];
 
-  for (let idx = 0; idx < timelineItems.length; idx++) {
-    const entry = audioEntriesMap.get(idx);
-    if (entry?.pcm16) {
-      const mp3Blob = encodePcm16ToMp3Blob(entry.pcm16, entry.sampleRate || 24000);
-      const finalBlob = mp3Blob || pcmToWavBlob(entry.pcm16, entry.sampleRate || 24000);
-      const ext = mp3Blob ? 'mp3' : 'wav';
-      zip.file(`${folderPath}/audio/step_${idx}.${ext}`, finalBlob);
-      audioManifest.push({
-        stepIndex: idx,
-        file: `step_${idx}.${ext}`,
-        durationSec: Number((entry.durationSec || 0).toFixed(2))
-      });
+  if (audioEntriesMap && audioEntriesMap.size > 0) {
+    const unified = await buildUnifiedAudioPackage(timelineItems.length, audioEntriesMap, 0.25);
+    if (unified) {
+      zip.file(`${folderPath}/audio/${unified.fileName}`, unified.blob);
       hasAnyAudio = true;
+      audioFile = unified.fileName;
+      audioTimeline = unified.audioTimeline;
     }
   }
 
+  const cleanLessonData = Object.fromEntries(
+    Object.entries(lessonData).filter(([k]) => !k.startsWith('_'))
+  );
+
   const finalJson = {
-    ...lessonData,
+    ...cleanLessonData,
     id: `${gradeSlug}-${titleSlug}`,
     grade: metadata?.grade || lessonData.grade,
     topic: metadata?.topic || lessonData.topic,
     title: metadata?.title || lessonData.title,
     hasStaticAudio: hasAnyAudio,
-    audioManifest
+    audioFile: hasAnyAudio ? audioFile : '',
+    audioTimeline: hasAnyAudio ? audioTimeline : []
   };
+  delete finalJson.audioManifest;
 
   zip.file(`${folderPath}/data.json`, JSON.stringify(finalJson, null, 2));
 

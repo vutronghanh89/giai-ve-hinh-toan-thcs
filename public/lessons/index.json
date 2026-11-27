@@ -7,7 +7,8 @@
     "path": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-tinh-goc/data.json",
     "audioBasePath": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-tinh-goc/audio",
     "hasStaticAudio": true,
-    "updatedAt": "2026-11-27T09:29:01.810Z"
+    "updatedAt": "2026-11-27T09:29:01.810Z",
+    "audioFile": "full_audio.mp3"
   },
   {
     "id": "toan-8-duong-trung-binh-trong-tam-giac-vuong",
