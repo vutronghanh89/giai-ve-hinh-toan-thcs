@@ -1,5 +1,16 @@
 [
   {
+    "id": "toan-9-tinh-canh-duong-cao-va-ti-so-luong-giac-trong-tam-giac-vuong",
+    "grade": "Toán 9",
+    "topic": "Tỉ số lượng giác của góc nhọn",
+    "title": "Tính cạnh, đường cao và tỉ số lượng giác trong tam giác vuông (Đúng/Sai)",
+    "path": "/lessons/toan-9/tinh-canh-duong-cao-va-ti-so-luong-giac-trong-tam-giac-vuong/data.json",
+    "audioBasePath": "/lessons/toan-9/tinh-canh-duong-cao-va-ti-so-luong-giac-trong-tam-giac-vuong/audio",
+    "audioFile": "full_audio.mp3",
+    "hasStaticAudio": true,
+    "updatedAt": "2026-11-27T16:21:39.527Z"
+  },
+  {
     "id": "toan-8-chung-minh-tu-giac-la-hinh-chu-nhat-va-ba-diem-thang-hang",
     "grade": "Toán 8",
     "topic": "Hình chữ nhật",

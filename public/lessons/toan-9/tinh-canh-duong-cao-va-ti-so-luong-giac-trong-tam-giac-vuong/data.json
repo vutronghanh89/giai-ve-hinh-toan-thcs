@@ -1,0 +1,368 @@
+{
+  "id": "toan-9-tinh-canh-duong-cao-va-ti-so-luong-giac-trong-tam-giac-vuong",
+  "hasStaticAudio": true,
+  "audioFile": "full_audio.mp3",
+  "audioTimeline": [
+    {
+      "stepIndex": 0,
+      "startSec": 0,
+      "endSec": 11.722
+    },
+    {
+      "stepIndex": 1,
+      "startSec": 11.722,
+      "endSec": 23.876
+    },
+    {
+      "stepIndex": 2,
+      "startSec": 23.876,
+      "endSec": 30.606
+    },
+    {
+      "stepIndex": 3,
+      "startSec": 30.606,
+      "endSec": 42.856
+    },
+    {
+      "stepIndex": 4,
+      "startSec": 42.856,
+      "endSec": 69.29
+    },
+    {
+      "stepIndex": 5,
+      "startSec": 69.29,
+      "endSec": 84.54
+    },
+    {
+      "stepIndex": 6,
+      "startSec": 84.54,
+      "endSec": 90.574
+    },
+    {
+      "stepIndex": 7,
+      "startSec": 90.574,
+      "endSec": 100.568
+    },
+    {
+      "stepIndex": 8,
+      "startSec": 100.568,
+      "endSec": 113.106
+    },
+    {
+      "stepIndex": 9,
+      "startSec": 113.106,
+      "endSec": 126.508
+    },
+    {
+      "stepIndex": 10,
+      "startSec": 126.508,
+      "endSec": 132.854
+    },
+    {
+      "stepIndex": 11,
+      "startSec": 132.854,
+      "endSec": 146.702
+    }
+  ],
+  "grade": "Toán 9",
+  "topic": "Tỉ số lượng giác của góc nhọn",
+  "title": "Tính cạnh, đường cao và tỉ số lượng giác trong tam giác vuông (Đúng/Sai)",
+  "problemText": "Câu 15. Cho tam giác ABC vuông tại A có AB = 6 cm, AC = 8 cm. Kẻ đường cao AH (H ∈ BC).\na) Độ dài cạnh huyền BC = 10 cm.\nb) sin B = 0,8 và tan C = 0,75.\nc) Độ dài đường cao AH = 4,8 cm.\nd) Số đo góc ∠ABC làm tròn đến độ là 53°.",
+  "given": [
+    "△ABC vuông tại A",
+    "AB = 6 cm, AC = 8 cm",
+    "Đường cao AH (H ∈ BC)"
+  ],
+  "prove": [
+    "Xét tính Đúng / Sai của các mệnh đề:",
+    "a) BC = 10 cm",
+    "b) sin B = 0,8 và tan C = 0,75",
+    "c) AH = 4,8 cm",
+    "d) ∠ABC ≈ 53°"
+  ],
+  "drawingSteps": [
+    {
+      "caption": "Dùng thước thẳng vẽ cạnh góc vuông AB = 6 cm",
+      "voiceExplanation": "Đề bài cho tam giác A B C vuông tại A có A B bằng sáu xăng-ti-mét, A C bằng tám xăng-ti-mét. Trước tiên, ta đặt thước thẳng có vạch chia và kẻ đoạn thẳng A B.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "A-B"
+      ],
+      "highlightPoints": [
+        "A",
+        "B"
+      ]
+    },
+    {
+      "caption": "Dùng ê-ke vẽ cạnh góc vuông AC = 8 cm vuông góc với AB tại A",
+      "voiceExplanation": "Tiếp theo, vì tam giác A B C vuông tại A và A C bằng tám xăng-ti-mét lớn hơn A B, ta đặt ê-ke tại đỉnh A, kẻ đoạn thẳng A C vuông góc với A B và đánh dấu góc vuông tại A.",
+      "tool": "eke",
+      "highlightSegments": [
+        "A-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "C"
+      ]
+    },
+    {
+      "caption": "Dùng thước thẳng nối B với C để hoàn thiện tam giác ABC",
+      "voiceExplanation": "Sau đó, ta dùng thước thẳng nối điểm B với điểm C để hoàn thiện tam giác A B C vuông tại A.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "B-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Dùng ê-ke kẻ đường cao AH vuông góc với BC tại H",
+      "voiceExplanation": "Tiếp theo, đề bài cho kẻ đường cao A H với H thuộc B C. Ta đặt ê-ke trượt theo cạnh huyền B C đi qua đỉnh A, kẻ đoạn thẳng A H vuông góc với B C tại H và đánh dấu góc vuông tại H.",
+      "tool": "eke",
+      "highlightSegments": [
+        "A-H"
+      ],
+      "highlightPoints": [
+        "A",
+        "H"
+      ]
+    }
+  ],
+  "geometry": {
+    "points": [
+      {
+        "id": "A",
+        "label": "A",
+        "x": -125,
+        "y": 95,
+        "dx": -16,
+        "dy": 14,
+        "drawStep": 0
+      },
+      {
+        "id": "B",
+        "label": "B",
+        "x": -125,
+        "y": -97,
+        "dx": -16,
+        "dy": -10,
+        "drawStep": 0
+      },
+      {
+        "id": "C",
+        "label": "C",
+        "x": 131,
+        "y": 95,
+        "dx": 14,
+        "dy": 14,
+        "drawStep": 1
+      },
+      {
+        "id": "H",
+        "label": "H",
+        "x": -32.84,
+        "y": -27.88,
+        "dx": 14,
+        "dy": -12,
+        "drawStep": 3
+      }
+    ],
+    "segments": [
+      {
+        "from": "A",
+        "to": "B",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "A",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 1
+      },
+      {
+        "from": "B",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 2
+      },
+      {
+        "from": "A",
+        "to": "H",
+        "style": "solid",
+        "color": "accent",
+        "ticks": 0,
+        "drawStep": 3
+      }
+    ],
+    "circles": [],
+    "rightAngles": [
+      {
+        "vertex": "A",
+        "p1": "B",
+        "p2": "C",
+        "drawStep": 1
+      },
+      {
+        "vertex": "H",
+        "p1": "A",
+        "p2": "C",
+        "drawStep": 3
+      }
+    ],
+    "angleArcs": [
+      {
+        "vertex": "B",
+        "p1": "A",
+        "p2": "C",
+        "radius": 28,
+        "label": "",
+        "color": "emerald",
+        "drawStep": 3,
+        "solveRevealStep": 3
+      },
+      {
+        "vertex": "C",
+        "p1": "B",
+        "p2": "A",
+        "radius": 32,
+        "label": "",
+        "color": "accent",
+        "drawStep": 3,
+        "solveRevealStep": 4
+      }
+    ]
+  },
+  "solutionSteps": [
+    {
+      "lineText": "Phân tích: Áp dụng định lí Pythagore tính BC; dùng tỉ số lượng giác góc nhọn tính sin B, tan C, số đo ∠ABC và công thức diện tích tính đường cao AH.",
+      "voiceExplanation": "Trước khi kiểm tra từng ý đúng sai, cô trò mình cùng phân tích nhanh bài toán nhé. Tam giác A B C vuông tại A đã biết hai cạnh góc vuông A B bằng sáu xăng-ti-mét và A C bằng tám xăng-ti-mét. Nhờ định lí Py-ta-go ta tính ngay được cạnh huyền B C. Có đủ ba cạnh, ta dễ dàng kiểm tra tỉ số lượng giác sin góc B, tan góc C, suy ra số đo góc A B C và tính độ dài đường cao A H qua hệ thức diện tích tam giác vuông.",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "B-C",
+        "A-H"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C",
+        "H"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "C"
+          ],
+          "color": "blue"
+        }
+      ]
+    },
+    {
+      "lineText": "a) Xét △ABC vuông tại A: BC² = AB² + AC² = 6² + 8² = 100 ⇒ BC = 10 cm",
+      "voiceExplanation": "Kiểm tra ý a. Xét tam giác A B C vuông tại A, theo định lí Py-ta-go ta có B C bình phương bằng A B bình phương cộng A C bình phương, bằng sáu bình phương cộng tám bình phương, bằng một trăm. Suy ra cạnh huyền B C bằng mười xăng-ti-mét.",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "B-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "⇒ Mệnh đề a) ĐÚNG",
+      "voiceExplanation": "Như vậy, mệnh đề a phát biểu độ dài cạnh huyền B C bằng mười xăng-ti-mét là đúng.",
+      "highlightSegments": [
+        "B-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "C"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "b) Trong △ABC vuông tại A: sin B = AC / BC = 8 / 10 = 0,8",
+      "voiceExplanation": "Kiểm tra ý b. Trong tam giác A B C vuông tại A, sin góc B bằng cạnh đối A C chia cạnh huyền B C, bằng tám phần mười, tức là bằng không phẩy tám.",
+      "highlightSegments": [
+        "A-C",
+        "B-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "A",
+        "C"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Và tan C = AB / AC = 6 / 8 = 0,75 ⇒ Mệnh đề b) ĐÚNG",
+      "voiceExplanation": "Đồng thời, tan góc C bằng cạnh đối A B chia cạnh kề A C, bằng sáu phần tám, tức là bằng không phẩy bảy mươi lăm. Cả hai giá trị đều khớp với đề bài nên mệnh đề b là đúng.",
+      "highlightSegments": [
+        "A-B",
+        "A-C"
+      ],
+      "highlightPoints": [
+        "C",
+        "A",
+        "B"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "c) Hệ thức diện tích △ABC vuông tại A: AH · BC = AB · AC ⇒ AH = (6 · 8) / 10 = 4,8 cm",
+      "voiceExplanation": "Kiểm tra ý c. Trong tam giác A B C vuông tại A có đường cao A H, tích đường cao A H nhân cạnh huyền B C bằng tích hai cạnh góc vuông A B nhân A C. Suy ra A H bằng sáu nhân tám chia mười, bằng bốn phẩy tám xăng-ti-mét.",
+      "highlightSegments": [
+        "A-H",
+        "B-C",
+        "A-B",
+        "A-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "H"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "⇒ Mệnh đề c) ĐÚNG",
+      "voiceExplanation": "Do đó, mệnh đề c phát biểu độ dài đường cao A H bằng bốn phẩy tám xăng-ti-mét là đúng.",
+      "highlightSegments": [
+        "A-H"
+      ],
+      "highlightPoints": [
+        "A",
+        "H"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "d) Ta có sin B = 0,8 ⇒ ∠ABC ≈ 53,13° ≈ 53° (làm tròn đến độ) ⇒ Mệnh đề d) ĐÚNG",
+      "voiceExplanation": "Cuối cùng kiểm tra ý d. Vì sin góc B bằng không phẩy tám nên bấm máy tính tìm góc ta được góc A B C xấp xỉ năm mươi ba phẩy mười ba độ, làm tròn đến hàng đơn vị độ là năm mươi ba độ. Vậy mệnh đề d cũng là đúng.",
+      "highlightSegments": [
+        "A-B",
+        "B-C"
+      ],
+      "highlightPoints": [
+        "B"
+      ],
+      "highlightPolygons": []
+    }
+  ],
+  "audioBasePath": "/lessons/toan-9/tinh-canh-duong-cao-va-ti-so-luong-giac-trong-tam-giac-vuong/audio",
+  "updatedAt": "2026-11-27T16:21:39.527Z"
+}
