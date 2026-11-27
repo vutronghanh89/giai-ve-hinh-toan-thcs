@@ -1,5 +1,16 @@
 [
   {
+    "id": "toan-8-chung-minh-tu-giac-la-hinh-chu-nhat-va-ba-diem-thang-hang",
+    "grade": "Toán 8",
+    "topic": "Hình chữ nhật",
+    "title": "Chứng minh tứ giác là hình chữ nhật và ba điểm thẳng hàng",
+    "path": "/lessons/toan-8/chung-minh-tu-giac-la-hinh-chu-nhat-va-ba-diem-thang-hang/data.json",
+    "audioBasePath": "/lessons/toan-8/chung-minh-tu-giac-la-hinh-chu-nhat-va-ba-diem-thang-hang/audio",
+    "audioFile": "full_audio.mp3",
+    "hasStaticAudio": true,
+    "updatedAt": "2026-11-27T15:26:26.042Z"
+  },
+  {
     "id": "toan-7-chung-minh-hai-tam-giac-bang-nhau-va-tinh-chat-tia-phan-giac",
     "grade": "Toán 7",
     "topic": "Hai tam giác bằng nhau",

@@ -1,0 +1,577 @@
+{
+  "id": "toan-8-chung-minh-tu-giac-la-hinh-chu-nhat-va-ba-diem-thang-hang",
+  "hasStaticAudio": true,
+  "audioFile": "full_audio.mp3",
+  "audioTimeline": [
+    {
+      "stepIndex": 0,
+      "startSec": 0,
+      "endSec": 8.842
+    },
+    {
+      "stepIndex": 1,
+      "startSec": 8.842,
+      "endSec": 21.98
+    },
+    {
+      "stepIndex": 2,
+      "startSec": 21.98,
+      "endSec": 28.71
+    },
+    {
+      "stepIndex": 3,
+      "startSec": 28.71,
+      "endSec": 39.424
+    },
+    {
+      "stepIndex": 4,
+      "startSec": 39.424,
+      "endSec": 52.73
+    },
+    {
+      "stepIndex": 5,
+      "startSec": 52.73,
+      "endSec": 66.084
+    },
+    {
+      "stepIndex": 6,
+      "startSec": 66.084,
+      "endSec": 74.11
+    },
+    {
+      "stepIndex": 7,
+      "startSec": 74.11,
+      "endSec": 81.68
+    },
+    {
+      "stepIndex": 8,
+      "startSec": 81.68,
+      "endSec": 89.154
+    },
+    {
+      "stepIndex": 9,
+      "startSec": 89.154,
+      "endSec": 131.476
+    },
+    {
+      "stepIndex": 10,
+      "startSec": 131.476,
+      "endSec": 137.438
+    },
+    {
+      "stepIndex": 11,
+      "startSec": 137.438,
+      "endSec": 141.096
+    },
+    {
+      "stepIndex": 12,
+      "startSec": 141.096,
+      "endSec": 146.866
+    },
+    {
+      "stepIndex": 13,
+      "startSec": 146.866,
+      "endSec": 153.548
+    },
+    {
+      "stepIndex": 14,
+      "startSec": 153.548,
+      "endSec": 160.23
+    },
+    {
+      "stepIndex": 15,
+      "startSec": 160.23,
+      "endSec": 166.936
+    },
+    {
+      "stepIndex": 16,
+      "startSec": 166.936,
+      "endSec": 172.346
+    },
+    {
+      "stepIndex": 17,
+      "startSec": 172.346,
+      "endSec": 182.436
+    },
+    {
+      "stepIndex": 18,
+      "startSec": 182.436,
+      "endSec": 189.838
+    },
+    {
+      "stepIndex": 19,
+      "startSec": 189.838,
+      "endSec": 197.326
+    }
+  ],
+  "grade": "Toán 8",
+  "topic": "Hình chữ nhật",
+  "title": "Chứng minh tứ giác là hình chữ nhật và ba điểm thẳng hàng",
+  "problemText": "Cho tam giác ABC vuông tại A (AB < AC). Gọi M là trung điểm của cạnh BC. Từ M, kẻ MD ⊥ AB tại D và ME ⊥ AC tại E.\n1. Chứng minh tứ giác ADME là hình chữ nhật.\n2. Gọi I là trung điểm của AM. Chứng minh D, I, E thẳng hàng.",
+  "given": [
+    "△ABC vuông tại A (AB < AC)",
+    "M là trung điểm của BC (MB = MC)",
+    "MD ⊥ AB tại D, ME ⊥ AC tại E",
+    "I là trung điểm của AM (IA = IM)"
+  ],
+  "prove": [
+    "1. Tứ giác ADME là hình chữ nhật",
+    "2. Ba điểm D, I, E thẳng hàng"
+  ],
+  "drawingSteps": [
+    {
+      "caption": "Dùng thước thẳng vẽ cạnh góc vuông AB",
+      "voiceExplanation": "Đề bài cho tam giác A B C vuông tại A với A B nhỏ hơn A C. Trước tiên, ta đặt thước thẳng có vạch chia và kẻ đoạn thẳng A B.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "A-B"
+      ],
+      "highlightPoints": [
+        "A",
+        "B"
+      ]
+    },
+    {
+      "caption": "Dùng ê-ke vẽ cạnh góc vuông AC vuông góc với AB tại A",
+      "voiceExplanation": "Tiếp theo, vì tam giác A B C vuông tại A và A B nhỏ hơn A C, ta đặt ê-ke tại đỉnh A và kẻ đoạn thẳng A C vuông góc với A B sao cho A C dài hơn A B, đồng thời đánh dấu góc vuông tại A.",
+      "tool": "eke",
+      "highlightSegments": [
+        "A-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "C"
+      ]
+    },
+    {
+      "caption": "Dùng thước thẳng nối B với C để hoàn thiện tam giác ABC",
+      "voiceExplanation": "Sau đó, ta dùng thước thẳng nối điểm B với điểm C để hoàn thiện tam giác A B C vuông tại A.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "B-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Dùng thước thẳng xác định trung điểm M của cạnh BC",
+      "voiceExplanation": "Tiếp theo, đề bài cho M là trung điểm của cạnh B C. Ta dùng thước thẳng đo đoạn thẳng B C và đánh dấu điểm M nằm chính giữa sao cho M B bằng M C.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "M"
+      ]
+    },
+    {
+      "caption": "Dùng ê-ke kẻ MD vuông góc với AB tại D",
+      "voiceExplanation": "Tiếp theo, đề bài cho từ M kẻ M D vuông góc với A B tại D. Ta đặt ê-ke trượt theo cạnh A B đi qua điểm M, kẻ đoạn thẳng M D vuông góc với A B tại D và đánh dấu góc vuông tại D.",
+      "tool": "eke",
+      "highlightSegments": [
+        "M-D"
+      ],
+      "highlightPoints": [
+        "M",
+        "D"
+      ]
+    },
+    {
+      "caption": "Dùng ê-ke kẻ ME vuông góc với AC tại E",
+      "voiceExplanation": "Tương tự, đề bài cho từ M kẻ M E vuông góc với A C tại E. Ta đặt ê-ke trượt theo cạnh A C đi qua điểm M, kẻ đoạn thẳng M E vuông góc với A C tại E và đánh dấu góc vuông tại E.",
+      "tool": "eke",
+      "highlightSegments": [
+        "M-E"
+      ],
+      "highlightPoints": [
+        "M",
+        "E"
+      ]
+    },
+    {
+      "caption": "Dùng thước thẳng nối đường chéo AM",
+      "voiceExplanation": "Sang câu hai, đề bài gọi I là trung điểm của A M. Trước hết, ta dùng thước thẳng nối điểm A với điểm M.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "A-M"
+      ],
+      "highlightPoints": [
+        "A",
+        "M"
+      ]
+    },
+    {
+      "caption": "Dùng thước thẳng lấy trung điểm I của AM",
+      "voiceExplanation": "Tiếp theo, ta dùng thước thẳng đo đoạn thẳng A M và lấy điểm I nằm chính giữa sao cho I A bằng I M.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "A-I",
+        "I-M"
+      ],
+      "highlightPoints": [
+        "I"
+      ]
+    },
+    {
+      "caption": "Dùng thước thẳng nối đường chéo DE",
+      "voiceExplanation": "Cuối cùng, để chứng minh ba điểm D, I, E thẳng hàng, ta đặt thước thẳng nối hai điểm D và E.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "D-E"
+      ],
+      "highlightPoints": [
+        "D",
+        "I",
+        "E"
+      ]
+    }
+  ],
+  "geometry": {
+    "points": [
+      {
+        "id": "A",
+        "label": "A",
+        "x": -130,
+        "y": 105,
+        "dx": -16,
+        "dy": 14,
+        "drawStep": 0
+      },
+      {
+        "id": "B",
+        "label": "B",
+        "x": -130,
+        "y": -105,
+        "dx": -16,
+        "dy": -8,
+        "drawStep": 0
+      },
+      {
+        "id": "C",
+        "label": "C",
+        "x": 150,
+        "y": 105,
+        "dx": 14,
+        "dy": 14,
+        "drawStep": 1
+      },
+      {
+        "id": "M",
+        "label": "M",
+        "x": 10,
+        "y": 0,
+        "dx": 14,
+        "dy": -10,
+        "drawStep": 3
+      },
+      {
+        "id": "D",
+        "label": "D",
+        "x": -130,
+        "y": 0,
+        "dx": -18,
+        "dy": 4,
+        "drawStep": 4
+      },
+      {
+        "id": "E",
+        "label": "E",
+        "x": 10,
+        "y": 105,
+        "dx": 0,
+        "dy": 18,
+        "drawStep": 5
+      },
+      {
+        "id": "I",
+        "label": "I",
+        "x": -60,
+        "y": 52.5,
+        "dx": -14,
+        "dy": -12,
+        "drawStep": 7
+      }
+    ],
+    "segments": [
+      {
+        "from": "A",
+        "to": "B",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "A",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 1
+      },
+      {
+        "from": "B",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 2
+      },
+      {
+        "from": "B",
+        "to": "M",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 3
+      },
+      {
+        "from": "M",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 3
+      },
+      {
+        "from": "M",
+        "to": "D",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 4
+      },
+      {
+        "from": "M",
+        "to": "E",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 5
+      },
+      {
+        "from": "A",
+        "to": "M",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 6
+      },
+      {
+        "from": "A",
+        "to": "I",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 7
+      },
+      {
+        "from": "I",
+        "to": "M",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 7
+      },
+      {
+        "from": "D",
+        "to": "E",
+        "style": "dashed",
+        "color": "accent",
+        "ticks": 0,
+        "drawStep": 8
+      }
+    ],
+    "circles": [],
+    "rightAngles": [
+      {
+        "vertex": "A",
+        "p1": "B",
+        "p2": "C",
+        "drawStep": 1
+      },
+      {
+        "vertex": "D",
+        "p1": "A",
+        "p2": "M",
+        "drawStep": 4
+      },
+      {
+        "vertex": "E",
+        "p1": "A",
+        "p2": "M",
+        "drawStep": 5
+      }
+    ],
+    "angleArcs": []
+  },
+  "solutionSteps": [
+    {
+      "lineText": "Phân tích: Tứ giác ADME có 3 góc vuông nên là hình chữ nhật; suy ra hai đường chéo AM và DE cắt nhau tại trung điểm của mỗi đường.",
+      "voiceExplanation": "Trước khi trình bày lời giải, cô trò mình cùng phân tích đề bài nhé. Ở câu một, đề bài yêu cầu chứng minh tứ giác A D M E là hình chữ nhật. Quan sát hình vẽ, tứ giác A D M E đã có góc A vuông do tam giác A B C vuông tại A, góc D vuông do M D vuông góc với A B, và góc E vuông do M E vuông góc với A C. Tứ giác có ba góc vuông nên là hình chữ nhật. Sang câu hai, vì A D M E là hình chữ nhật nên hai đường chéo A M và D E cắt nhau tại trung điểm của mỗi đường. Mà I là trung điểm của đường chéo A M nên I cũng là trung điểm của đường chéo D E, từ đó suy ra ba điểm D, I, E thẳng hàng.",
+      "highlightSegments": [],
+      "highlightPoints": [
+        "A",
+        "D",
+        "M",
+        "E"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "D",
+            "M",
+            "E"
+          ],
+          "color": "blue"
+        }
+      ]
+    },
+    {
+      "lineText": "1. Chứng minh tứ giác ADME là hình chữ nhật:",
+      "voiceExplanation": "Bây giờ ta đi vào câu một, chứng minh tứ giác A D M E là hình chữ nhật.",
+      "highlightSegments": [],
+      "highlightPoints": [],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Xét tứ giác ADME có:",
+      "voiceExplanation": "Ta xét tứ giác A D M E.",
+      "highlightSegments": [],
+      "highlightPoints": [
+        "A",
+        "D",
+        "M",
+        "E"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "D",
+            "M",
+            "E"
+          ],
+          "color": "blue"
+        }
+      ]
+    },
+    {
+      "lineText": "∠DAE = 90° (vì △ABC vuông tại A)",
+      "voiceExplanation": "Thứ nhất, góc D A E bằng chín mươi độ vì tam giác A B C vuông tại A.",
+      "highlightSegments": [
+        "A-B",
+        "A-C"
+      ],
+      "highlightPoints": [
+        "A"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "∠ADM = 90° (vì MD ⊥ AB tại D)",
+      "voiceExplanation": "Thứ hai, góc A D M bằng chín mươi độ vì M D vuông góc với A B tại D.",
+      "highlightSegments": [
+        "M-D",
+        "A-B"
+      ],
+      "highlightPoints": [
+        "D"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "∠AEM = 90° (vì ME ⊥ AC tại E)",
+      "voiceExplanation": "Thứ ba, góc A E M bằng chín mươi độ vì M E vuông góc với A C tại E.",
+      "highlightSegments": [
+        "M-E",
+        "A-C"
+      ],
+      "highlightPoints": [
+        "E"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Vậy tứ giác ADME là hình chữ nhật (tứ giác có 3 góc vuông)",
+      "voiceExplanation": "Tứ giác A D M E có ba góc vuông nên suy ra tứ giác A D M E là hình chữ nhật.",
+      "highlightSegments": [
+        "M-D",
+        "M-E"
+      ],
+      "highlightPoints": [
+        "A",
+        "D",
+        "M",
+        "E"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "D",
+            "M",
+            "E"
+          ],
+          "color": "emerald"
+        }
+      ]
+    },
+    {
+      "lineText": "2. Chứng minh ba điểm D, I, E thẳng hàng:",
+      "voiceExplanation": "Tiếp theo sang câu hai, chứng minh ba điểm D, I, E thẳng hàng.",
+      "highlightSegments": [],
+      "highlightPoints": [],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Vì ADME là hình chữ nhật nên hai đường chéo AM và DE cắt nhau tại trung điểm của mỗi đường",
+      "voiceExplanation": "Vì A D M E là hình chữ nhật đã chứng minh ở trên, nên theo tính chất hình chữ nhật, hai đường chéo A M và D E cắt nhau tại trung điểm của mỗi đường.",
+      "highlightSegments": [
+        "A-M",
+        "D-E"
+      ],
+      "highlightPoints": [
+        "A",
+        "M",
+        "D",
+        "E"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Mà I là trung điểm của AM (giả thiết) nên I cũng là trung điểm của DE",
+      "voiceExplanation": "Mà I là trung điểm của đường chéo A M theo giả thiết, nên suy ra I cũng là trung điểm của đường chéo D E.",
+      "highlightSegments": [
+        "A-I",
+        "I-M",
+        "D-E"
+      ],
+      "highlightPoints": [
+        "I",
+        "D",
+        "E"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Vậy ba điểm D, I, E thẳng hàng (đpcm)",
+      "voiceExplanation": "Vì I là trung điểm của đoạn thẳng D E, do đó ba điểm D, I, E thẳng hàng, điều phải chứng minh.",
+      "highlightSegments": [
+        "D-E"
+      ],
+      "highlightPoints": [
+        "D",
+        "I",
+        "E"
+      ],
+      "highlightPolygons": []
+    }
+  ],
+  "audioBasePath": "/lessons/toan-8/chung-minh-tu-giac-la-hinh-chu-nhat-va-ba-diem-thang-hang/audio",
+  "updatedAt": "2026-11-27T15:26:26.042Z"
+}
