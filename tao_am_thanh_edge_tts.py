@@ -19,15 +19,20 @@ SAMPLERATES = {
 
 
 def chuan_hoa_loi_doc(text: str) -> str:
-    """Chuyển ký hiệu toán học sang lời đọc tự nhiên tiếng Việt."""
+    """Chuyển ký hiệu toán học & LaTeX sang lời đọc tự nhiên tiếng Việt."""
     s = str(text or "")
-    s = s.replace("△", "tam giác ")
-    s = s.replace("⊥", " vuông góc với ")
-    s = s.replace("∥", " song song với ")
+    s = s.replace("$", "")
+    s = re.sub(r"\\dfrac\{([^{}]+)\}\{([^{}]+)\}", r"\1 phần \2", s)
+    s = re.sub(r"\\frac\{([^{}]+)\}\{([^{}]+)\}", r"\1 phần \2", s)
+    s = re.sub(r"\\sqrt\{([^{}]+)\}", r"căn bậc hai của \1", s)
+    s = re.sub(r"\\widehat\{([^{}]+)\}", r"góc \1", s)
+    s = s.replace("\\triangle", "tam giác ").replace("△", "tam giác ")
+    s = s.replace("\\perp", " vuông góc với ").replace("⊥", " vuông góc với ")
+    s = s.replace("\\parallel", " song song với ").replace("∥", " song song với ")
     s = s.replace("∠", "góc ")
-    s = s.replace("⇒", "suy ra ")
-    s = s.replace("⇔", "khi và chỉ khi ")
-    s = s.replace("°", " độ ")
+    s = s.replace("\\Rightarrow", "suy ra ").replace("⇒", "suy ra ")
+    s = s.replace("\\Leftrightarrow", "khi và chỉ khi ").replace("⇔", "khi và chỉ khi ")
+    s = s.replace("^\\circ", " độ ").replace("°", " độ ")
     s = s.replace("=", " bằng ")
     s = re.sub(r"\b([A-Z])([A-Z])([A-Z])\b", r"\1 \2 \3", s)
     s = re.sub(r"\b([A-Z])([A-Z])\b", r"\1 \2", s)

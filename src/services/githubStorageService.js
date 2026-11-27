@@ -41,9 +41,6 @@ export function saveGithubConfigToLocal(cfg) {
   );
 }
 
-/**
- * Chuyển tiếng Việt có dấu thành slug chuẩn tên thư mục GitHub
- */
 export function slugifyVietnamese(str) {
   return String(str || 'bai-toan')
     .normalize('NFD')
@@ -80,9 +77,6 @@ export function loadExternalScript(src) {
   });
 }
 
-/**
- * Chuẩn hóa tần số lấy mẫu PCM16 bằng nội suy tuyến tính nếu các bước khác sampleRate
- */
 function resamplePcm16(pcm16, fromRate, toRate) {
   if (!pcm16 || fromRate === toRate || !fromRate || !toRate) return pcm16;
   const ratio = fromRate / toRate;
@@ -98,9 +92,6 @@ function resamplePcm16(pcm16, fromRate, toRate) {
   return out;
 }
 
-/**
- * Nén PCM16 sang MP3 48kbps Mono siêu nhẹ
- */
 export function encodePcm16ToMp3Blob(pcm16, sampleRate = 24000) {
   if (typeof window === 'undefined' || !window.lamejs || !window.lamejs.Mp3Encoder) {
     return null;
@@ -122,9 +113,6 @@ export function encodePcm16ToMp3Blob(pcm16, sampleRate = 24000) {
   }
 }
 
-/**
- * Ghép tất cả các bước âm thanh thành 1 tệp âm thanh duy nhất + bảng mốc thời gian chính xác
- */
 export async function buildUnifiedAudioPackage(totalSteps, audioEntriesMap, pauseSec = 0.25) {
   if (!audioEntriesMap || audioEntriesMap.size === 0 || totalSteps <= 0) {
     return null;
@@ -155,13 +143,11 @@ export async function buildUnifiedAudioPackage(totalSteps, audioEntriesMap, paus
       chunks.push(normalizedPcm);
       cursorSamples += normalizedPcm.length;
 
-      // Thêm khoảng nghỉ ngắn giữa các bước để giọng đọc tự nhiên
       if (idx < totalSteps - 1 && pauseSamples > 0) {
         chunks.push(new Int16Array(pauseSamples));
         cursorSamples += pauseSamples;
       }
     } else {
-      // Nếu bước này chưa có audio, chèn khoảng lặng 2.5s để giữ nhịp đồng bộ
       const fallbackSamples = Math.round(2.5 * targetSampleRate);
       chunks.push(new Int16Array(fallbackSamples));
       cursorSamples += fallbackSamples;
@@ -225,9 +211,6 @@ function base64ToUtf8(b64) {
   return new TextDecoder().decode(bytes);
 }
 
-/**
- * Kiểm tra kết nối tới Repository GitHub
- */
 export async function testGithubConnection(config) {
   const { token, owner, repo, branch } = config;
   if (!token || !owner || !repo) {
@@ -250,9 +233,6 @@ export async function testGithubConnection(config) {
   return true;
 }
 
-/**
- * Tạo Blob trên GitHub Git Data API
- */
 async function createGithubBlob({ owner, repo, token, base64Content }) {
   const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
     method: 'POST',
@@ -275,15 +255,12 @@ async function createGithubBlob({ owner, repo, token, base64Content }) {
   return data.sha;
 }
 
-/**
- * Lưu toàn bộ bài học (data.json + 1 file audio/full_audio.mp3 + index.json) thẳng lên GitHub
- */
 export async function saveLessonDirectToGithub({
   config,
   lessonData,
-  metadata, // { grade, title, topic }
+  metadata,
   timelineItems,
-  audioEntriesMap, // Map<stepIndex, { pcm16, sampleRate, durationSec }>
+  audioEntriesMap,
   onProgress
 }) {
   const { token, owner, repo, branch = 'main' } = config;
@@ -304,7 +281,6 @@ export async function saveLessonDirectToGithub({
     'Content-Type': 'application/json'
   };
 
-  // 1. Lấy commit hiện tại ở đầu nhánh (HEAD)
   onProgress?.('Đang kết nối nhánh GitHub...');
   const refRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branch}`, {
     headers
@@ -321,7 +297,6 @@ export async function saveLessonDirectToGithub({
   const commitData = await commitRes.json();
   const baseTreeSha = commitData.tree.sha;
 
-  // 2. Đọc public/lessons/index.json hiện tại trên repo
   onProgress?.('Đang đọc mục lục bài mẫu hiện có...');
   let existingIndex = [];
   const indexRes = await fetch(
@@ -340,7 +315,6 @@ export async function saveLessonDirectToGithub({
     }
   }
 
-  // 3. Ghép thành 1 file âm thanh duy nhất + bảng mốc thời gian
   const treeEntries = [];
   let hasAnyAudio = false;
   let audioFile = 'full_audio.mp3';
@@ -368,7 +342,6 @@ export async function saveLessonDirectToGithub({
     }
   }
 
-  // 4. Tạo file data.json hoàn chỉnh (loại bỏ các trường tạm nội bộ bắt đầu bằng _)
   onProgress?.('Đang lưu tệp dữ liệu bài toán (data.json)...');
   const cleanLessonData = Object.fromEntries(
     Object.entries(lessonData).filter(([k]) => !k.startsWith('_'))
@@ -402,7 +375,6 @@ export async function saveLessonDirectToGithub({
     sha: dataJsonSha
   });
 
-  // 5. Cập nhật public/lessons/index.json
   const newCatalogItem = {
     id: lessonId,
     grade: metadata.grade,
@@ -432,7 +404,6 @@ export async function saveLessonDirectToGithub({
     sha: indexJsonSha
   });
 
-  // 6. Tạo Tree mới, Commit mới và cập nhật HEAD
   onProgress?.('Đang xác nhận lưu vào kho GitHub...');
   const newTreeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
     method: 'POST',
@@ -479,9 +450,6 @@ export async function saveLessonDirectToGithub({
   };
 }
 
-/**
- * Tải gói bài học rời (.zip) gồm data.json + 1 file audio/full_audio.mp3 + script edge-tts
- */
 export async function downloadLessonZipBackup({
   lessonData,
   metadata,

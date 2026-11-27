@@ -1,6 +1,6 @@
 /* ============================================================================
    DỊCH VỤ GEMINI AI:
-   - Đợt 1: Phân tích đề toán -> Xuất JSON Hình vẽ 2D + GT-KL + Lời giải
+   - Đợt 1: Phân tích đề toán -> Xuất JSON Hình vẽ 2D + GT-KL + Lời giải (chuẩn LaTeX)
    - Chat Hiệu chỉnh: Chỉnh sửa trực tiếp bản nháp theo yêu cầu giáo viên
    - Đợt 2: Tạo âm thanh thuyết minh giọng nữ miền Bắc (Sulafat) từng bước
    ============================================================================ */
@@ -10,15 +10,16 @@ Nhiệm vụ của bạn là chuyển đổi đề bài hình học thành một
 
 QUY TẮC HỆ TỌA ĐỘ CANVAS 2D:
 - Gốc tọa độ (0, 0) nằm ở chính giữa khung vẽ.
-- Trục Ox hướng sang phải (x từ -190 đến 190), trục Oy hướng XUỐNG DƯỚI (y từ -145 đến 145; điểm ở phía trên có y âm, điểm ở đáy có y dương).
+- Trục Ox hướng sang phải (x từ -185 đến 185), trục Oy hướng XUỐNG DƯỚI (y từ -140 đến 140; điểm ở phía trên có y âm, điểm ở đáy có y dương).
 - Các điểm cần đặt cân đối, thoáng mắt, không chồng chéo nhãn (dx, dy là độ lệch pixel của tên điểm so với chấm tròn tọa độ, khoảng 12 đến 20px).
 - Mỗi điểm (point), đoạn thẳng (segment), đường tròn (circle) phải có thuộc tính "drawStep" (số nguyên bắt đầu từ 0) khớp với chỉ số của bước vẽ trong mảng "drawingSteps".
 - Ký hiệu góc vuông ("rightAngles") hoặc cung góc ("angleArcs") nếu là yếu tố cần chứng minh mới xuất hiện thì đặt thêm "solveRevealStep" bằng chỉ số bước tương ứng trong "solutionSteps" (hoặc bỏ trống nếu có sẵn từ giả thiết).
 
-QUY TẮC LỜI GIẢI & LỜI THOẠI THUYẾT MINH:
-- "given" và "prove": Viết ngắn gọn dưới dạng ký hiệu toán học chuẩn (ví dụ: "△ABC cân tại A (AB = AC)", "AM ⊥ BC").
-- "solutionSteps": Chia thành từng dòng lập luận ngắn gọn, mạch lạc, không đánh số thứ tự rườm rà ở đầu câu.
-- "voiceExplanation": Viết bằng văn nói tự nhiên của cô giáo dạy Toán miền Bắc để đọc thành tiếng. Đọc rời tên các điểm bằng chữ cái (ví dụ: viết "tam giác A B C", "đoạn thẳng M B", "vuông góc với B C"), KHÔNG dùng ký hiệu đặc biệt như △, ⊥, ∠, ⇒, = trong trường "voiceExplanation".
+QUY TẮC TRÌNH BÀY CÔNG THỨC TOÁN & LỜI GIẢI ("given", "prove", "solutionSteps"):
+- Mọi phân số trong "solutionSteps" BẮT BUỘC viết bằng LaTeX dạng $\\dfrac{tử}{mẫu}$ (tuyệt đối không dùng dấu gạch chéo '/' để viết phân số).
+- Mọi biểu thức toán học phức tạp (phân số, căn thức $\\sqrt{...}$, lũy thừa $R^2$, số $\\pi$, góc $\\widehat{ABC}$, tam giác $\\triangle ABC$, vuông góc $\\perp$, song song $\\parallel$, suy ra $\\Rightarrow$) đặt gọn trong dấu $...$ để hiển thị đẹp mắt, KHÔNG gãy dòng giữa chừng.
+- Mỗi dòng trong "solutionSteps" chỉ chứa tối đa 1 đến 2 dấu '=' trên một hàng; nếu một phép tính có nhiều bước biến đổi liên tiếp (tính biểu thức -> thay số -> rút gọn -> kết quả), hãy tách thành các dòng riêng biệt trong "solutionSteps" hoặc ngăn cách bằng xuống dòng \\n để học sinh dễ theo dõi.
+- Trường "voiceExplanation": Viết bằng văn nói tự nhiên của cô giáo dạy Toán miền Bắc để đọc thành tiếng. Đọc rời tên các điểm bằng chữ cái (ví dụ: "tam giác A B C", "đoạn thẳng M B", "vuông góc với B C"), KHÔNG dùng ký hiệu đặc biệt như △, ⊥, ∠, ⇒, =, $, \\dfrac trong trường "voiceExplanation".
 
 ĐỊNH DẠNG JSON BẮT BUỘC (TRẢ VỀ ĐÚNG CẤU TRÚC NÀY, KHÔNG THÊM VĂN BẢN NGOÀI JSON):
 {
@@ -56,8 +57,8 @@ QUY TẮC LỜI GIẢI & LỜI THOẠI THUYẾT MINH:
   },
   "solutionSteps": [
     {
-      "lineText": "Dòng lập luận toán học hiển thị bên phải",
-      "voiceExplanation": "Lời giảng tự nhiên của cô giáo giải thích dòng lập luận này",
+      "lineText": "Dòng lập luận toán học hiển thị bên phải (dùng $...$ và $\\\\dfrac{a}{b}$ cho công thức)",
+      "voiceExplanation": "Lời giảng tự nhiên của cô giáo giải thích dòng lập luận này (thuần tiếng Việt, không ký hiệu)",
       "highlightSegments": ["A-B"],
       "highlightPoints": ["A", "B"],
       "highlightPolygons": [
@@ -67,9 +68,6 @@ QUY TẮC LỜI GIẢI & LỜI THOẠI THUYẾT MINH:
   ]
 }`;
 
-/**
- * Làm sạch và phân tích chuỗi JSON trả về từ Gemini (xử lý triệt để lỗi bọc markdown hoặc ký tự thừa)
- */
 export function extractAndParseJson(rawText) {
   if (!rawText || typeof rawText !== 'string') {
     throw new Error('AI trả về nội dung trống.');
@@ -96,9 +94,6 @@ export function extractAndParseJson(rawText) {
   }
 }
 
-/**
- * Chuẩn hóa dữ liệu bài toán để đảm bảo Canvas 2D và trình chiếu luôn an toàn 100%
- */
 export function normalizeProblemData(raw, fallbackProblemText = '') {
   const safePoints = Array.isArray(raw?.geometry?.points)
     ? raw.geometry.points.map((p, idx) => ({
@@ -108,7 +103,10 @@ export function normalizeProblemData(raw, fallbackProblemText = '') {
         y: Number.isFinite(Number(p.y)) ? Number(p.y) : 0,
         dx: Number.isFinite(Number(p.dx)) ? Number(p.dx) : 0,
         dy: Number.isFinite(Number(p.dy)) ? Number(p.dy) : -14,
-        drawStep: Number.isInteger(Number(p.drawStep)) ? Number(p.drawStep) : 0
+        drawStep: Number.isInteger(Number(p.drawStep)) ? Number(p.drawStep) : 0,
+        ...(p.hideDot ? { hideDot: true } : {}),
+        ...(p.isRayEndpoint ? { isRayEndpoint: true } : {}),
+        ...(Number.isInteger(Number(p.hideAtStep)) ? { hideAtStep: Number(p.hideAtStep) } : {})
       }))
     : [];
 
@@ -120,11 +118,14 @@ export function normalizeProblemData(raw, fallbackProblemText = '') {
         .map((s) => ({
           from: String(s.from),
           to: String(s.to),
+          ...(s.type === 'ray' || s.type === 'line' ? { type: s.type } : {}),
           style: s.style === 'dashed' ? 'dashed' : 'solid',
           color: ['main', 'accent', 'emerald', 'red'].includes(s.color) ? s.color : 'main',
           ticks: Number.isInteger(Number(s.ticks)) ? Number(s.ticks) : 0,
           drawStep: Number.isInteger(Number(s.drawStep)) ? Number(s.drawStep) : 0,
-          ...(Number.isInteger(Number(s.ticksFromStep)) ? { ticksFromStep: Number(s.ticksFromStep) } : {})
+          ...(Number.isInteger(Number(s.ticksFromStep)) ? { ticksFromStep: Number(s.ticksFromStep) } : {}),
+          ...(Number.isInteger(Number(s.hideAtStep)) ? { hideAtStep: Number(s.hideAtStep) } : {}),
+          ...(s.noRuler ? { noRuler: true } : {})
         }))
     : [];
 
@@ -134,9 +135,13 @@ export function normalizeProblemData(raw, fallbackProblemText = '') {
         .map((c) => ({
           center: String(c.center),
           radius: Math.max(10, Number(c.radius) || 60),
+          ...(typeof c.startAngle === 'number' ? { startAngle: c.startAngle } : {}),
+          ...(typeof c.endAngle === 'number' ? { endAngle: c.endAngle } : {}),
+          ...(c.isConstruction ? { isConstruction: true } : {}),
           style: c.style === 'dashed' ? 'dashed' : 'solid',
           color: ['main', 'accent', 'emerald', 'red'].includes(c.color) ? c.color : 'main',
-          drawStep: Number.isInteger(Number(c.drawStep)) ? Number(c.drawStep) : 0
+          drawStep: Number.isInteger(Number(c.drawStep)) ? Number(c.drawStep) : 0,
+          ...(Number.isInteger(Number(c.hideAtStep)) ? { hideAtStep: Number(c.hideAtStep) } : {})
         }))
     : [];
 
@@ -207,6 +212,8 @@ export function normalizeProblemData(raw, fallbackProblemText = '') {
           voiceExplanation: String(st.voiceExplanation || st.lineText || ''),
           highlightSegments: Array.isArray(st.highlightSegments) ? st.highlightSegments.map(String) : [],
           highlightPoints: Array.isArray(st.highlightPoints) ? st.highlightPoints.map(String) : [],
+          highlightAngles: Array.isArray(st.highlightAngles) ? st.highlightAngles : [],
+          highlightRightAngles: Array.isArray(st.highlightRightAngles) ? st.highlightRightAngles : [],
           highlightPolygons: Array.isArray(st.highlightPolygons)
             ? st.highlightPolygons
                 .filter((poly) => Array.isArray(poly?.points) && poly.points.length >= 3)
@@ -222,6 +229,8 @@ export function normalizeProblemData(raw, fallbackProblemText = '') {
             voiceExplanation: 'Ta áp dụng các tính chất hình học đã học để chứng minh yêu cầu đề bài.',
             highlightSegments: [],
             highlightPoints: [],
+            highlightAngles: [],
+            highlightRightAngles: [],
             highlightPolygons: []
           }
         ];
@@ -247,9 +256,6 @@ export function normalizeProblemData(raw, fallbackProblemText = '') {
   };
 }
 
-/**
- * Quét toàn bộ model văn bản khả dụng cho API Key hiện tại (mỗi model có hạn mức quota & tải riêng)
- */
 async function discoverAllTextModels(apiKey) {
   try {
     const res = await fetch(
@@ -297,9 +303,6 @@ async function discoverAllTextModels(apiKey) {
   }
 }
 
-/**
- * Hàm lõi gọi Gemini: tự động xoay vòng qua các model dự phòng khi gặp quá tải (503) hoặc giới hạn lượt (429)
- */
 async function callGeminiJsonCore(parts, apiKey) {
   const candidateModels = [
     'gemini-3.8-flash',
@@ -355,15 +358,10 @@ async function callGeminiJsonCore(parts, apiKey) {
       }
       lastDetail = detail;
 
-      if (res.status === 404) {
-        return { status: 'skip', detail };
-      }
+      if (res.status === 404) return { status: 'skip', detail };
 
-      // Máy chủ Google đang quá tải tạm thời (500 / 502 / 503 / 504) -> chuyển sang model khác ngay
       if (res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504) {
-        if (!overloadedModels.includes(modelName)) {
-          overloadedModels.push(modelName);
-        }
+        if (!overloadedModels.includes(modelName)) overloadedModels.push(modelName);
         return { status: 'overloaded', detail };
       }
 
@@ -386,9 +384,7 @@ async function callGeminiJsonCore(parts, apiKey) {
 
     const data = await res.json();
     const candidate = data?.candidates?.[0];
-    if (!candidate) {
-      return { status: 'skip', detail: 'Phản hồi rỗng' };
-    }
+    if (!candidate) return { status: 'skip', detail: 'Phản hồi rỗng' };
     if (candidate.finishReason === 'MAX_TOKENS') {
       throw new Error('Lời giải quá dài vượt giới hạn phản hồi. Hãy thử yêu cầu AI viết súc tích hơn.');
     }
@@ -398,49 +394,37 @@ async function callGeminiJsonCore(parts, apiKey) {
     return { status: 'ok', parsed };
   };
 
-  // Vòng 1: Thử tuần tự qua từng model khả dụng
   for (let i = 0; i < candidateModels.length; i++) {
     const modelName = candidateModels[i];
     const outcome = await trySingleModel(modelName);
-    if (outcome.status === 'ok') {
-      return outcome.parsed;
-    }
+    if (outcome.status === 'ok') return outcome.parsed;
 
-    // Quét thêm toàn bộ danh sách model thực tế của API Key ngay khi gặp lỗi đầu tiên
     if (!discoveredDone) {
       discoveredDone = true;
       const discovered = await discoverAllTextModels(apiKey);
       for (const dm of discovered) {
-        if (!candidateModels.includes(dm)) {
-          candidateModels.push(dm);
-        }
+        if (!candidateModels.includes(dm)) candidateModels.push(dm);
       }
     }
   }
 
-  // Vòng 2: Nếu có model bị quá tải tạm thời (503), đợi 4 giây rồi thử lại
   if (overloadedModels.length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 4000));
     for (const modelName of overloadedModels.slice(0, 2)) {
       const retryOutcome = await trySingleModel(modelName);
-      if (retryOutcome.status === 'ok') {
-        return retryOutcome.parsed;
-      }
+      if (retryOutcome.status === 'ok') return retryOutcome.parsed;
     }
   }
 
-  // Vòng 3: Nếu có model bị giới hạn tốc độ (429), đợi 15 giây rồi thử lại
   if (rateLimitedModels.length > 0) {
     await new Promise((resolve) => setTimeout(resolve, 15000));
     const retryOutcome = await trySingleModel(rateLimitedModels[0]);
-    if (retryOutcome.status === 'ok') {
-      return retryOutcome.parsed;
-    }
+    if (retryOutcome.status === 'ok') return retryOutcome.parsed;
   }
 
   if (overloadedModels.length > 0) {
     throw new Error(
-      `Máy chủ Google Gemini đang quá tải tạm thời (503 High Demand) trên tất cả các model. Thầy vui lòng đợi khoảng 15–30 giây rồi bấm thử lại nhé!`
+      'Máy chủ Google Gemini đang quá tải tạm thời (503 High Demand) trên tất cả các model. Thầy vui lòng đợi khoảng 15–30 giây rồi bấm thử lại nhé!'
     );
   }
 
@@ -451,9 +435,6 @@ async function callGeminiJsonCore(parts, apiKey) {
   );
 }
 
-/**
- * ĐỢT 1: Tạo Hình vẽ tọa độ 2D, GT-KL và Lời giải từ đề bài (văn bản hoặc ảnh)
- */
 export async function generateGeometryAndSolution({ problemText, imageAttachment, apiKey }) {
   const parts = [];
   if (imageAttachment?.base64 && imageAttachment?.mimeType) {
@@ -467,8 +448,8 @@ export async function generateGeometryAndSolution({ problemText, imageAttachment
 
   const trimmed = (problemText || '').trim();
   const promptText = trimmed
-    ? `Hãy phân tích đề bài hình học THCS sau (kết hợp hình ảnh đính kèm nếu có), tạo tọa độ hình vẽ 2D chuẩn xác từng bước, tóm tắt GT-KL và viết lời giải chi tiết từng dòng:\n\n"${trimmed}"`
-    : 'Hãy đọc đề bài và hình vẽ trong ảnh đính kèm, trích xuất đầy đủ đề bài, tạo tọa độ hình vẽ 2D chuẩn xác từng bước, tóm tắt GT-KL và viết lời giải chi tiết từng dòng.';
+    ? `Hãy phân tích đề bài hình học THCS sau (kết hợp hình ảnh đính kèm nếu có), tạo tọa độ hình vẽ 2D chuẩn xác từng bước, tóm tắt GT-KL và viết lời giải chi tiết từng dòng (dùng LaTeX $...$ và $\\dfrac{a}{b}$ cho mọi phân số/công thức):\n\n"${trimmed}"`
+    : 'Hãy đọc đề bài và hình vẽ trong ảnh đính kèm, trích xuất đầy đủ đề bài, tạo tọa độ hình vẽ 2D chuẩn xác từng bước, tóm tắt GT-KL và viết lời giải chi tiết từng dòng (dùng LaTeX $...$ và $\\dfrac{a}{b}$ cho mọi phân số/công thức).';
 
   parts.push({ text: promptText });
 
@@ -476,9 +457,6 @@ export async function generateGeometryAndSolution({ problemText, imageAttachment
   return normalizeProblemData(parsed, trimmed);
 }
 
-/**
- * GIAI ĐOẠN HIỆU CHỈNH: Chat với AI để chỉnh sửa trực tiếp bản nháp hiện tại
- */
 export async function refineDraftProblemWithChat({ currentDraft, userInstruction, apiKey }) {
   const prompt = `Đây là dữ liệu JSON hiện tại của bài toán hình học đang biên soạn:
 ${JSON.stringify(currentDraft, null, 2)}
@@ -499,12 +477,23 @@ Hãy giữ nguyên toàn bộ cấu trúc JSON và các phần đã tốt, CHỈ
   };
 }
 
-/**
- * Chuẩn hóa văn bản trước khi đưa vào TTS để đọc chuẩn tiếng Việt
- */
 export function formatNaturalLectureSpeech(text) {
   if (!text) return '';
   return String(text)
+    .replace(/\$/g, '')
+    .replace(/\\dfrac\{([^{}]+)\}\{([^{}]+)\}/g, '$1 phần $2')
+    .replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '$1 phần $2')
+    .replace(/\\sqrt\{([^{}]+)\}/g, 'căn bậc hai của $1')
+    .replace(/\\widehat\{([^{}]+)\}/g, 'góc $1')
+    .replace(/\\triangle/g, 'tam giác ')
+    .replace(/\\perp/g, ' vuông góc với ')
+    .replace(/\\parallel/g, ' song song với ')
+    .replace(/\\Rightarrow/g, 'suy ra ')
+    .replace(/\\Leftrightarrow/g, 'khi và chỉ khi ')
+    .replace(/\\approx/g, 'xấp xỉ ')
+    .replace(/\\pi/g, 'pi ')
+    .replace(/\\cdot/g, ' nhân ')
+    .replace(/\\times/g, ' nhân ')
     .replace(/△/g, 'tam giác ')
     .replace(/⊥/g, ' vuông góc với ')
     .replace(/∥/g, ' song song với ')
@@ -567,9 +556,6 @@ export function pcmToWavBlob(pcm16, sampleRate = 24000) {
   return new Blob([buffer], { type: 'audio/wav' });
 }
 
-/**
- * ĐỢT 2: Tạo âm thanh giọng nữ miền Bắc (Sulafat) cho một đoạn thuyết minh
- */
 export async function generateStepAudioTTS({ text, apiKey, signal, onCooldownTick }) {
   const naturalSpeech = formatNaturalLectureSpeech(text);
   if (!naturalSpeech) {

@@ -20,22 +20,25 @@
   background: #475569;
 }
 
-/* Thanh cuộn lên xuống rõ nét cho khung lời giải & danh sách bước */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+/* Tối ưu hiển thị công thức toán KaTeX chuẩn sách giáo khoa */
+.math-text-block .katex {
+  font-size: 1.06em;
+  line-height: 1.6;
+  color: inherit;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.7);
-  border-radius: 9999px;
+.math-text-block .katex-display {
+  margin: 0.35rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(71, 85, 105, 0.85);
-  border-radius: 9999px;
+.math-eq-line .katex .mfrac {
+  margin: 0.15em 0.1em;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.75);
+.math-atomic {
+  display: inline-block;
+  white-space: nowrap;
+  vertical-align: middle;
 }
