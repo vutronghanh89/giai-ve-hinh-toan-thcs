@@ -6,82 +6,92 @@
     {
       "stepIndex": 0,
       "startSec": 0,
-      "endSec": 9.394
+      "endSec": 7.09
     },
     {
       "stepIndex": 1,
-      "startSec": 9.394,
-      "endSec": 27.908
+      "startSec": 7.09,
+      "endSec": 14.084
     },
     {
       "stepIndex": 2,
-      "startSec": 27.908,
-      "endSec": 45.006
+      "startSec": 14.084,
+      "endSec": 20.742
     },
     {
       "stepIndex": 3,
-      "startSec": 45.006,
-      "endSec": 55.84
+      "startSec": 20.742,
+      "endSec": 34.264
     },
     {
       "stepIndex": 4,
-      "startSec": 55.84,
-      "endSec": 68.45
+      "startSec": 34.264,
+      "endSec": 47.378
     },
     {
       "stepIndex": 5,
-      "startSec": 68.45,
-      "endSec": 76.668
+      "startSec": 47.378,
+      "endSec": 54.804
     },
     {
       "stepIndex": 6,
-      "startSec": 76.668,
-      "endSec": 115.99
+      "startSec": 54.804,
+      "endSec": 60.79
     },
     {
       "stepIndex": 7,
-      "startSec": 115.99,
-      "endSec": 122.312
+      "startSec": 60.79,
+      "endSec": 66.752
     },
     {
       "stepIndex": 8,
-      "startSec": 122.312,
-      "endSec": 127.122
+      "startSec": 66.752,
+      "endSec": 106.074
     },
     {
       "stepIndex": 9,
-      "startSec": 127.122,
-      "endSec": 131.452
+      "startSec": 106.074,
+      "endSec": 112.396
     },
     {
       "stepIndex": 10,
-      "startSec": 131.452,
-      "endSec": 138.71
+      "startSec": 112.396,
+      "endSec": 117.206
     },
     {
       "stepIndex": 11,
-      "startSec": 138.71,
-      "endSec": 143.304
+      "startSec": 117.206,
+      "endSec": 121.536
     },
     {
       "stepIndex": 12,
-      "startSec": 143.304,
-      "endSec": 150.634
+      "startSec": 121.536,
+      "endSec": 128.794
     },
     {
       "stepIndex": 13,
-      "startSec": 150.634,
-      "endSec": 158.876
+      "startSec": 128.794,
+      "endSec": 133.388
     },
     {
       "stepIndex": 14,
-      "startSec": 158.876,
-      "endSec": 171.99
+      "startSec": 133.388,
+      "endSec": 140.718
     },
     {
       "stepIndex": 15,
-      "startSec": 171.99,
-      "endSec": 185.022
+      "startSec": 140.718,
+      "endSec": 148.96
+    },
+    {
+      "stepIndex": 16,
+      "startSec": 148.96,
+      "endSec": 162.074
+    },
+    {
+      "stepIndex": 17,
+      "startSec": 162.074,
+      "endSec": 175.106
     }
   ],
   "grade": "Toán 7",
@@ -100,77 +110,94 @@
   ],
   "drawingSteps": [
     {
-      "caption": "Vẽ góc nhọn xOy",
-      "voiceExplanation": "Đề bài cho góc nhọn x O y, do đó trước tiên ta dùng thước thẳng có vạch chia vẽ đỉnh O cùng hai tia O x và O y tạo thành góc nhọn x O y.",
+      "caption": "Dùng thước thẳng vẽ tia Ox",
+      "voiceExplanation": "Đề bài cho góc nhọn x O y. Trước tiên, ta đặt thước thẳng có vạch chia và kẻ tia O x từ gốc O.",
       "tool": "ruler",
       "highlightSegments": [
-        "O-X",
-        "O-Y"
+        "O-X"
       ],
       "highlightPoints": [
-        "O",
-        "X",
-        "Y"
+        "O"
       ]
     },
     {
-      "caption": "Lấy điểm A trên Ox và điểm B trên Oy sao cho OA = OB",
-      "voiceExplanation": "Tiếp theo, đề bài cho trên tia O x lấy điểm A, trên tia O y lấy điểm B sao cho O A bằng O B. Ta lấy điểm A trên tia O x, sau đó dùng compa đặt mũi nhọn tại O, mở khẩu độ bằng đúng đoạn thẳng O A rồi quay cung tròn nét đứt cắt tia O y tại điểm B, ta được đoạn thẳng O A bằng đoạn thẳng O B.",
+      "caption": "Dùng thước thẳng vẽ tia Oy tạo thành góc nhọn xOy",
+      "voiceExplanation": "Tiếp theo, giữ nguyên đỉnh O, ta xoay thước thẳng và kẻ tia O y để tạo thành góc nhọn x O y.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "O-Y"
+      ],
+      "highlightPoints": [
+        "O"
+      ]
+    },
+    {
+      "caption": "Lấy điểm A trên tia Ox",
+      "voiceExplanation": "Đề bài cho trên tia O x lấy điểm A, ta dùng thước thẳng đo và đánh dấu điểm A trên tia O x.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "O-A"
+      ],
+      "highlightPoints": [
+        "O",
+        "A"
+      ]
+    },
+    {
+      "caption": "Dùng compa lấy điểm B trên tia Oy sao cho OB = OA",
+      "voiceExplanation": "Tiếp theo, đề bài cho trên tia O y lấy điểm B sao cho O A bằng O B. Ta dùng compa đặt mũi nhọn tại O, mở khẩu độ bằng đúng đoạn thẳng O A rồi quay sang tia O y để lấy điểm B sao cho O B bằng O A.",
       "tool": "compass",
       "highlightSegments": [
-        "O-A",
         "O-B"
       ],
       "highlightPoints": [
         "O",
-        "A",
         "B"
       ]
     },
     {
-      "caption": "Dựng hai cung tròn compa phụ trợ xác định tia phân giác Oz",
-      "voiceExplanation": "Tiếp theo, đề bài cho O z là tia phân giác của góc x O y. Để dựng tia phân giác O z như thực tế, ta dùng compa quay cung tròn nhỏ tâm O cắt hai tia O x, O y, rồi từ hai giao điểm đó quay tiếp hai cung tròn nét đứt có cùng bán kính cắt nhau tại một điểm nằm bên trong góc x O y.",
-      "tool": "compass",
-      "highlightSegments": [],
-      "highlightPoints": [
-        "O",
-        "E",
-        "F",
-        "K"
-      ]
-    },
-    {
-      "caption": "Kẻ tia phân giác Oz của góc xOy",
-      "voiceExplanation": "Sau đó, ta dùng thước thẳng đặt qua đỉnh O và giao điểm vừa xác định để kẻ tia phân giác O z của góc x O y, đồng thời đánh dấu hai góc x O z và y O z bằng nhau.",
+      "caption": "Dựng và kẻ tia phân giác Oz của góc xOy",
+      "voiceExplanation": "Tiếp theo, đề bài cho O z là tia phân giác của góc x O y. Ta dùng compa và thước thẳng xác định vị trí chia đôi góc x O y, kẻ tia phân giác O z và đánh dấu hai góc x O z và y O z bằng nhau.",
       "tool": "ruler",
       "highlightSegments": [
         "O-Z"
       ],
       "highlightPoints": [
-        "O",
-        "Z"
+        "O"
       ]
     },
     {
-      "caption": "Lấy điểm M tùy ý trên tia Oz, nối MA và MB",
-      "voiceExplanation": "Tiếp theo, đề bài cho trên tia O z lấy điểm M tùy ý khác O. Ta lấy điểm M trên tia O z, rồi dùng thước thẳng nối M với A và nối M với B để hoàn thiện các đoạn thẳng cần xét.",
+      "caption": "Lấy điểm M tùy ý trên tia Oz (M ≠ O)",
+      "voiceExplanation": "Đề bài cho trên tia O z lấy điểm M tùy ý khác O, ta đánh dấu một điểm M nằm trên tia O z.",
+      "tool": "ruler",
+      "highlightSegments": [],
+      "highlightPoints": [
+        "M"
+      ]
+    },
+    {
+      "caption": "Dùng thước thẳng nối M với A",
+      "voiceExplanation": "Để xét tam giác O A M, ta đặt thước thẳng và nối điểm M với điểm A.",
       "tool": "ruler",
       "highlightSegments": [
-        "M-A",
+        "M-A"
+      ],
+      "highlightPoints": [
+        "M",
+        "A"
+      ]
+    },
+    {
+      "caption": "Dùng thước thẳng nối M với B",
+      "voiceExplanation": "Cuối cùng, ta chuyển thước thẳng và nối điểm M với điểm B để hoàn thiện hình vẽ.",
+      "tool": "ruler",
+      "highlightSegments": [
         "M-B"
       ],
       "highlightPoints": [
         "M",
-        "A",
         "B"
       ]
-    },
-    {
-      "caption": "Ẩn các đường nét đứt dựng hình phụ trợ",
-      "voiceExplanation": "Cuối cùng, ta ẩn các cung tròn nét đứt dựng hình phụ trợ của compa để hình vẽ gọn gàng, rõ nét trước khi bắt đầu giải bài.",
-      "tool": "ruler",
-      "highlightSegments": [],
-      "highlightPoints": []
     }
   ],
   "geometry": {
@@ -178,7 +205,7 @@
       {
         "id": "O",
         "label": "O",
-        "x": -150,
+        "x": -145,
         "y": 0,
         "dx": -16,
         "dy": 5,
@@ -187,83 +214,56 @@
       {
         "id": "X",
         "label": "x",
-        "x": 118.33,
-        "y": -134.16,
-        "dx": 12,
-        "dy": -8,
+        "x": 266.44,
+        "y": -205.72,
+        "dx": -98.44,
+        "dy": 71.72,
         "drawStep": 0
       },
       {
         "id": "Y",
         "label": "y",
-        "x": 118.33,
-        "y": 134.16,
-        "dx": 12,
-        "dy": 12,
-        "drawStep": 0
+        "x": 266.44,
+        "y": 205.72,
+        "dx": -98.44,
+        "dy": -71.72,
+        "drawStep": 1
       },
       {
         "id": "A",
         "label": "A",
-        "x": 11,
-        "y": -80.5,
+        "x": 11.52,
+        "y": -78.26,
         "dx": -4,
         "dy": -16,
-        "drawStep": 1
+        "drawStep": 2
       },
       {
         "id": "B",
         "label": "B",
-        "x": 11,
-        "y": 80.5,
+        "x": 11.52,
+        "y": 78.26,
         "dx": -4,
         "dy": 18,
-        "drawStep": 1
-      },
-      {
-        "id": "E",
-        "label": "E",
-        "x": -89.18,
-        "y": -30.41,
-        "dx": 0,
-        "dy": 0,
-        "drawStep": 2
-      },
-      {
-        "id": "F",
-        "label": "F",
-        "x": -89.18,
-        "y": 30.41,
-        "dx": 0,
-        "dy": 0,
-        "drawStep": 2
-      },
-      {
-        "id": "K",
-        "label": "K",
-        "x": -39.79,
-        "y": 0,
-        "dx": 0,
-        "dy": 0,
-        "drawStep": 2
+        "drawStep": 3
       },
       {
         "id": "Z",
         "label": "z",
-        "x": 165,
+        "x": 280,
         "y": 0,
-        "dx": 14,
-        "dy": 4,
-        "drawStep": 3
+        "dx": -95,
+        "dy": -14,
+        "drawStep": 4
       },
       {
         "id": "M",
         "label": "M",
-        "x": 85,
+        "x": 95,
         "y": 0,
-        "dx": 12,
+        "dx": 10,
         "dy": -14,
-        "drawStep": 4
+        "drawStep": 5
       }
     ],
     "segments": [
@@ -281,7 +281,7 @@
         "style": "solid",
         "color": "main",
         "ticks": 0,
-        "drawStep": 0
+        "drawStep": 1
       },
       {
         "from": "O",
@@ -289,7 +289,7 @@
         "style": "solid",
         "color": "main",
         "ticks": 1,
-        "drawStep": 1
+        "drawStep": 2
       },
       {
         "from": "O",
@@ -297,7 +297,7 @@
         "style": "solid",
         "color": "main",
         "ticks": 1,
-        "drawStep": 1
+        "drawStep": 3
       },
       {
         "from": "O",
@@ -305,7 +305,7 @@
         "style": "solid",
         "color": "main",
         "ticks": 0,
-        "drawStep": 3
+        "drawStep": 4
       },
       {
         "from": "M",
@@ -313,7 +313,7 @@
         "style": "solid",
         "color": "main",
         "ticks": 0,
-        "drawStep": 4
+        "drawStep": 6
       },
       {
         "from": "M",
@@ -321,58 +321,29 @@
         "style": "solid",
         "color": "main",
         "ticks": 0,
-        "drawStep": 4
+        "drawStep": 7
       }
     ],
-    "circles": [
-      {
-        "center": "O",
-        "radius": 180,
-        "style": "dashed",
-        "color": "accent",
-        "drawStep": 1
-      },
-      {
-        "center": "O",
-        "radius": 68,
-        "style": "dashed",
-        "color": "accent",
-        "drawStep": 2
-      },
-      {
-        "center": "E",
-        "radius": 58,
-        "style": "dashed",
-        "color": "accent",
-        "drawStep": 2
-      },
-      {
-        "center": "F",
-        "radius": 58,
-        "style": "dashed",
-        "color": "accent",
-        "drawStep": 2
-      }
-    ],
+    "circles": [],
     "rightAngles": [],
     "angleArcs": [
       {
         "vertex": "O",
         "p1": "X",
         "p2": "Z",
-        "radius": 32,
+        "radius": 34,
         "label": "",
         "color": "accent",
-        "drawStep": 3
+        "drawStep": 4
       },
       {
         "vertex": "O",
         "p1": "Z",
         "p2": "Y",
-        "radius": 36,
+        "radius": 38,
         "label": "",
         "color": "accent",
-        "drawStep": 3
+        "drawStep": 4
       },
       {
         "vertex": "M",
@@ -381,7 +352,7 @@
         "radius": 24,
         "label": "",
         "color": "emerald",
-        "drawStep": 4,
+        "drawStep": 7,
         "solveRevealStep": 8
       },
       {
@@ -391,7 +362,7 @@
         "radius": 28,
         "label": "",
         "color": "emerald",
-        "drawStep": 4,
+        "drawStep": 7,
         "solveRevealStep": 8
       }
     ]
@@ -669,5 +640,5 @@
     }
   ],
   "audioBasePath": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-tinh-chat-tia-phan-giac/audio",
-  "updatedAt": "2026-11-27T14:12:56.580Z"
+  "updatedAt": "2026-11-27T14:38:24.122Z"
 }
