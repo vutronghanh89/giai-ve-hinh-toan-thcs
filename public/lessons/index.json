@@ -1,5 +1,16 @@
 [
   {
+    "id": "toan-7-chung-minh-hai-tam-giac-bang-nhau-va-tinh-chat-tia-phan-giac",
+    "grade": "Toán 7",
+    "topic": "Hai tam giác bằng nhau",
+    "title": "Chứng minh hai tam giác bằng nhau và tính chất tia phân giác",
+    "path": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-tinh-chat-tia-phan-giac/data.json",
+    "audioBasePath": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-tinh-chat-tia-phan-giac/audio",
+    "audioFile": "full_audio.mp3",
+    "hasStaticAudio": true,
+    "updatedAt": "2026-11-27T14:12:56.580Z"
+  },
+  {
     "id": "toan-7-chung-minh-hai-tam-giac-bang-nhau-va-hai-duong-thang-song-so",
     "grade": "Toán 7",
     "topic": "Hai tam giác bằng nhau",
