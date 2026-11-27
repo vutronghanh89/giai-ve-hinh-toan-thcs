@@ -1,0 +1,548 @@
+{
+  "id": "toan-7-chung-minh-hai-tam-giac-bang-nhau-va-hai-duong-thang-song-so",
+  "hasStaticAudio": true,
+  "audioFile": "full_audio.mp3",
+  "audioTimeline": [
+    {
+      "stepIndex": 0,
+      "startSec": 0,
+      "endSec": 6.322
+    },
+    {
+      "stepIndex": 1,
+      "startSec": 6.322,
+      "endSec": 15.092
+    },
+    {
+      "stepIndex": 2,
+      "startSec": 15.092,
+      "endSec": 24.918
+    },
+    {
+      "stepIndex": 3,
+      "startSec": 24.918,
+      "endSec": 31.72
+    },
+    {
+      "stepIndex": 4,
+      "startSec": 31.72,
+      "endSec": 37.85
+    },
+    {
+      "stepIndex": 5,
+      "startSec": 37.85,
+      "endSec": 42.492
+    },
+    {
+      "stepIndex": 6,
+      "startSec": 42.492,
+      "endSec": 47.518
+    },
+    {
+      "stepIndex": 7,
+      "startSec": 47.518,
+      "endSec": 54.008
+    },
+    {
+      "stepIndex": 8,
+      "startSec": 54.008,
+      "endSec": 60.906
+    },
+    {
+      "stepIndex": 9,
+      "startSec": 60.906,
+      "endSec": 67.9
+    },
+    {
+      "stepIndex": 10,
+      "startSec": 67.9,
+      "endSec": 73.742
+    },
+    {
+      "stepIndex": 11,
+      "startSec": 73.742,
+      "endSec": 85.464
+    },
+    {
+      "stepIndex": 12,
+      "startSec": 85.464,
+      "endSec": 97.248
+    }
+  ],
+  "grade": "Toán 7",
+  "topic": "Hai tam giác bằng nhau",
+  "title": "Chứng minh hai tam giác bằng nhau và hai đường thẳng song song",
+  "problemText": "Cho tam giác ABC. Gọi M là trung điểm của cạnh BC. Trên tia đối của tia MA, lấy điểm D sao cho MD = MA.\n1. Chứng minh △AMB = △DMC.\n2. Chứng minh AB // CD.",
+  "given": [
+    "△ABC",
+    "M là trung điểm của BC (MB = MC)",
+    "D thuộc tia đối của tia MA, MD = MA"
+  ],
+  "prove": [
+    "1. △AMB = △DMC",
+    "2. AB // CD"
+  ],
+  "drawingSteps": [
+    {
+      "caption": "Vẽ tam giác ABC",
+      "voiceExplanation": "Đầu tiên, ta dùng thước thẳng vẽ tam giác A B C với ba cạnh khác nhau.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "A-B",
+        "B-C",
+        "C-A"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Lấy M là trung điểm của cạnh BC",
+      "voiceExplanation": "Tiếp theo, trên cạnh B C, ta xác định trung điểm M sao cho đoạn thẳng M B bằng đoạn thẳng M C.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "M",
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Trên tia đối của tia MA lấy điểm D sao cho MD = MA",
+      "voiceExplanation": "Nối A với M, rồi kéo dài về phía M để lấy điểm D trên tia đối của tia M A sao cho độ dài M D bằng độ dài M A.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "A-M",
+        "M-D"
+      ],
+      "highlightPoints": [
+        "A",
+        "M",
+        "D"
+      ]
+    },
+    {
+      "caption": "Nối C với D và đánh dấu cặp góc đối đỉnh",
+      "voiceExplanation": "Cuối cùng, ta nối C với D và đánh dấu cặp góc đối đỉnh A M B và D M C.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "C-D"
+      ],
+      "highlightPoints": [
+        "C",
+        "D"
+      ]
+    }
+  ],
+  "geometry": {
+    "points": [
+      {
+        "id": "A",
+        "label": "A",
+        "x": -55,
+        "y": -110,
+        "dx": -8,
+        "dy": -16,
+        "drawStep": 0
+      },
+      {
+        "id": "B",
+        "label": "B",
+        "x": -125,
+        "y": 25,
+        "dx": -16,
+        "dy": 8,
+        "drawStep": 0
+      },
+      {
+        "id": "C",
+        "label": "C",
+        "x": 125,
+        "y": -25,
+        "dx": 16,
+        "dy": -6,
+        "drawStep": 0
+      },
+      {
+        "id": "M",
+        "label": "M",
+        "x": 0,
+        "y": 0,
+        "dx": -16,
+        "dy": -8,
+        "drawStep": 1
+      },
+      {
+        "id": "D",
+        "label": "D",
+        "x": 55,
+        "y": 110,
+        "dx": 8,
+        "dy": 18,
+        "drawStep": 2
+      }
+    ],
+    "segments": [
+      {
+        "from": "A",
+        "to": "B",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "B",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "C",
+        "to": "A",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "B",
+        "to": "M",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 1
+      },
+      {
+        "from": "M",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 1
+      },
+      {
+        "from": "A",
+        "to": "M",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 2
+      },
+      {
+        "from": "M",
+        "to": "D",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 2
+      },
+      {
+        "from": "C",
+        "to": "D",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 3
+      }
+    ],
+    "circles": [],
+    "rightAngles": [],
+    "angleArcs": [
+      {
+        "vertex": "M",
+        "p1": "A",
+        "p2": "B",
+        "radius": 24,
+        "label": "",
+        "color": "accent",
+        "drawStep": 3
+      },
+      {
+        "vertex": "M",
+        "p1": "D",
+        "p2": "C",
+        "radius": 24,
+        "label": "",
+        "color": "accent",
+        "drawStep": 3
+      },
+      {
+        "vertex": "A",
+        "p1": "B",
+        "p2": "M",
+        "radius": 26,
+        "label": "",
+        "color": "emerald",
+        "drawStep": 3,
+        "solveRevealStep": 7
+      },
+      {
+        "vertex": "D",
+        "p1": "C",
+        "p2": "M",
+        "radius": 26,
+        "label": "",
+        "color": "emerald",
+        "drawStep": 3,
+        "solveRevealStep": 7
+      }
+    ]
+  },
+  "solutionSteps": [
+    {
+      "lineText": "1. Chứng minh △AMB = △DMC:",
+      "voiceExplanation": "Phần một, chứng minh tam giác A M B bằng tam giác D M C.",
+      "highlightSegments": [
+        "A-M",
+        "B-M",
+        "A-B",
+        "M-D",
+        "M-C",
+        "C-D"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "M"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "M",
+            "B"
+          ],
+          "color": "blue"
+        },
+        {
+          "points": [
+            "D",
+            "M",
+            "C"
+          ],
+          "color": "amber"
+        }
+      ]
+    },
+    {
+      "lineText": "Xét △AMB và △DMC có:",
+      "voiceExplanation": "Ta xét hai tam giác A M B và D M C.",
+      "highlightSegments": [],
+      "highlightPoints": [
+        "A",
+        "M",
+        "B",
+        "D",
+        "C"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "M",
+            "B"
+          ],
+          "color": "blue"
+        },
+        {
+          "points": [
+            "D",
+            "M",
+            "C"
+          ],
+          "color": "amber"
+        }
+      ]
+    },
+    {
+      "lineText": "MA = MD (giả thiết)",
+      "voiceExplanation": "Thứ nhất, cạnh M A bằng cạnh M D theo giả thiết.",
+      "highlightSegments": [
+        "A-M",
+        "M-D"
+      ],
+      "highlightPoints": [
+        "A",
+        "M",
+        "D"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "M",
+            "B"
+          ],
+          "color": "blue"
+        },
+        {
+          "points": [
+            "D",
+            "M",
+            "C"
+          ],
+          "color": "amber"
+        }
+      ]
+    },
+    {
+      "lineText": "∠AMB = ∠DMC (hai góc đối đỉnh)",
+      "voiceExplanation": "Thứ hai, góc A M B bằng góc D M C vì đây là hai góc đối đỉnh.",
+      "highlightSegments": [
+        "A-M",
+        "B-M",
+        "M-D",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "M"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "M",
+            "B"
+          ],
+          "color": "blue"
+        },
+        {
+          "points": [
+            "D",
+            "M",
+            "C"
+          ],
+          "color": "amber"
+        }
+      ]
+    },
+    {
+      "lineText": "MB = MC (vì M là trung điểm của BC)",
+      "voiceExplanation": "Thứ ba, cạnh M B bằng cạnh M C do M là trung điểm của cạnh B C.",
+      "highlightSegments": [
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "M",
+        "C"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "M",
+            "B"
+          ],
+          "color": "blue"
+        },
+        {
+          "points": [
+            "D",
+            "M",
+            "C"
+          ],
+          "color": "amber"
+        }
+      ]
+    },
+    {
+      "lineText": "Vậy △AMB = △DMC (c.g.c)",
+      "voiceExplanation": "Từ ba yếu tố trên, suy ra tam giác A M B bằng tam giác D M C theo trường hợp cạnh góc cạnh.",
+      "highlightSegments": [
+        "A-B",
+        "B-M",
+        "A-M",
+        "C-D",
+        "M-C",
+        "M-D"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "M"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "M",
+            "B"
+          ],
+          "color": "emerald"
+        },
+        {
+          "points": [
+            "D",
+            "M",
+            "C"
+          ],
+          "color": "emerald"
+        }
+      ]
+    },
+    {
+      "lineText": "2. Chứng minh AB // CD:",
+      "voiceExplanation": "Phần hai, chứng minh đường thẳng A B song song với đường thẳng C D.",
+      "highlightSegments": [
+        "A-B",
+        "C-D"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Vì △AMB = △DMC nên ∠MAB = ∠MDC (hai góc tương ứng)",
+      "voiceExplanation": "Vì tam giác A M B bằng tam giác D M C đã chứng minh ở trên, nên góc M A B bằng góc M D C vì là hai góc tương ứng.",
+      "highlightSegments": [
+        "A-B",
+        "A-M",
+        "M-D",
+        "C-D"
+      ],
+      "highlightPoints": [
+        "A",
+        "D",
+        "M"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Mà hai góc này ở vị trí so le trong nên AB // CD (đpcm)",
+      "voiceExplanation": "Mà hai góc M A B và M D C lại nằm ở vị trí so le trong đối với hai đường thẳng A B, C D và cát tuyến A D, do đó A B song song với C D, điều phải chứng minh.",
+      "highlightSegments": [
+        "A-B",
+        "C-D",
+        "A-M",
+        "M-D"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "highlightPolygons": []
+    }
+  ],
+  "audioBasePath": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-hai-duong-thang-song-so/audio",
+  "updatedAt": "2026-11-27T10:11:41.990Z"
+}

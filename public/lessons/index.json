@@ -1,5 +1,16 @@
 [
   {
+    "id": "toan-7-chung-minh-hai-tam-giac-bang-nhau-va-hai-duong-thang-song-so",
+    "grade": "Toán 7",
+    "topic": "Hai tam giác bằng nhau",
+    "title": "Chứng minh hai tam giác bằng nhau và hai đường thẳng song song",
+    "path": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-hai-duong-thang-song-so/data.json",
+    "audioBasePath": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-hai-duong-thang-song-so/audio",
+    "audioFile": "full_audio.mp3",
+    "hasStaticAudio": true,
+    "updatedAt": "2026-11-27T10:11:41.990Z"
+  },
+  {
     "id": "toan-7-chung-minh-hai-tam-giac-bang-nhau-va-tinh-goc",
     "grade": "Toán 7",
     "topic": "Hai tam giác bằng nhau (c.c.c)",
