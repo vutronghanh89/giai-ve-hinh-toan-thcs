@@ -1,0 +1,398 @@
+{
+  "id": "toan-7-chung-minh-hai-tam-giac-bang-nhau-va-tinh-goc",
+  "hasStaticAudio": true,
+  "grade": "Toán 7",
+  "topic": "Hai tam giác bằng nhau (c.c.c)",
+  "title": "Chứng minh hai tam giác bằng nhau và tính góc",
+  "problemText": "Cho tam giác ABC có AB = AC. Gọi M là trung điểm của cạnh BC.\na) Chứng minh △ABM = △ACM.\nb) Suy ra ∠AMB = ∠AMC và tính số đo mỗi góc đó.",
+  "given": [
+    "△ABC có AB = AC",
+    "M là trung điểm của BC (MB = MC)"
+  ],
+  "prove": [
+    "a) △ABM = △ACM",
+    "b) ∠AMB = ∠AMC và tính số đo ∠AMB, ∠AMC"
+  ],
+  "drawingSteps": [
+    {
+      "caption": "Vẽ cạnh đáy BC bằng thước thẳng",
+      "voiceExplanation": "Đầu tiên, ta dùng thước thẳng vẽ cạnh đáy B C nằm ngang.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "B-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Dùng compa xác định đỉnh A sao cho AB = AC rồi nối AB, AC",
+      "voiceExplanation": "Tiếp theo, ta dùng compa mở một bán kính lớn hơn một nửa B C, vẽ hai cung tròn tâm B và tâm C cắt nhau tại đỉnh A, sau đó nối A B và A C để được tam giác A B C có A B bằng A C.",
+      "tool": "compass",
+      "highlightSegments": [
+        "A-B",
+        "A-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    {
+      "caption": "Lấy trung điểm M của cạnh BC và nối đoạn thẳng AM",
+      "voiceExplanation": "Sau đó, ta xác định điểm M là trung điểm của cạnh B C sao cho M B bằng M C, rồi dùng thước thẳng nối đỉnh A với điểm M.",
+      "tool": "ruler",
+      "highlightSegments": [
+        "A-M",
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "M"
+      ]
+    }
+  ],
+  "geometry": {
+    "points": [
+      {
+        "id": "A",
+        "label": "A",
+        "x": 0,
+        "y": -110,
+        "dx": 0,
+        "dy": -16,
+        "drawStep": 1
+      },
+      {
+        "id": "B",
+        "label": "B",
+        "x": -105,
+        "y": 95,
+        "dx": -16,
+        "dy": 14,
+        "drawStep": 0
+      },
+      {
+        "id": "C",
+        "label": "C",
+        "x": 105,
+        "y": 95,
+        "dx": 16,
+        "dy": 14,
+        "drawStep": 0
+      },
+      {
+        "id": "M",
+        "label": "M",
+        "x": 0,
+        "y": 95,
+        "dx": 0,
+        "dy": 18,
+        "drawStep": 2
+      }
+    ],
+    "segments": [
+      {
+        "from": "B",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 0,
+        "drawStep": 0
+      },
+      {
+        "from": "A",
+        "to": "B",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 1
+      },
+      {
+        "from": "A",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 1,
+        "drawStep": 1
+      },
+      {
+        "from": "B",
+        "to": "M",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 2
+      },
+      {
+        "from": "M",
+        "to": "C",
+        "style": "solid",
+        "color": "main",
+        "ticks": 2,
+        "drawStep": 2
+      },
+      {
+        "from": "A",
+        "to": "M",
+        "style": "solid",
+        "color": "accent",
+        "ticks": 0,
+        "drawStep": 2
+      }
+    ],
+    "circles": [],
+    "rightAngles": [
+      {
+        "vertex": "M",
+        "p1": "A",
+        "p2": "C",
+        "drawStep": 2,
+        "solveRevealStep": 7
+      }
+    ],
+    "angleArcs": [
+      {
+        "vertex": "M",
+        "p1": "A",
+        "p2": "B",
+        "radius": 22,
+        "label": "",
+        "color": "accent",
+        "drawStep": 2,
+        "solveRevealStep": 5
+      },
+      {
+        "vertex": "M",
+        "p1": "C",
+        "p2": "A",
+        "radius": 22,
+        "label": "",
+        "color": "accent",
+        "drawStep": 2,
+        "solveRevealStep": 5
+      }
+    ]
+  },
+  "solutionSteps": [
+    {
+      "lineText": "a) Xét △ABM và △ACM, ta có:",
+      "voiceExplanation": "Câu a. Xét tam giác A B M và tam giác A C M, ta có:",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "B-M",
+        "M-C",
+        "A-M"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C",
+        "M"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "M"
+          ],
+          "color": "blue"
+        },
+        {
+          "points": [
+            "A",
+            "C",
+            "M"
+          ],
+          "color": "emerald"
+        }
+      ]
+    },
+    {
+      "lineText": "AB = AC (theo giả thiết)",
+      "voiceExplanation": "Thứ nhất, cạnh A B bằng cạnh A C theo giả thiết.",
+      "highlightSegments": [
+        "A-B",
+        "A-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "MB = MC (vì M là trung điểm của BC)",
+      "voiceExplanation": "Thứ hai, cạnh M B bằng cạnh M C vì M là trung điểm của cạnh B C.",
+      "highlightSegments": [
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "B",
+        "M",
+        "C"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "AM là cạnh chung",
+      "voiceExplanation": "Thứ ba, đoạn thẳng A M là cạnh chung của hai tam giác.",
+      "highlightSegments": [
+        "A-M"
+      ],
+      "highlightPoints": [
+        "A",
+        "M"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Suy ra △ABM = △ACM (c.c.c)",
+      "voiceExplanation": "Vậy suy ra tam giác A B M bằng tam giác A C M theo trường hợp cạnh, cạnh, cạnh.",
+      "highlightSegments": [
+        "A-B",
+        "A-C",
+        "B-M",
+        "M-C",
+        "A-M"
+      ],
+      "highlightPoints": [
+        "A",
+        "B",
+        "C",
+        "M"
+      ],
+      "highlightPolygons": [
+        {
+          "points": [
+            "A",
+            "B",
+            "M"
+          ],
+          "color": "blue"
+        },
+        {
+          "points": [
+            "A",
+            "C",
+            "M"
+          ],
+          "color": "emerald"
+        }
+      ]
+    },
+    {
+      "lineText": "b) Vì △ABM = △ACM nên ∠AMB = ∠AMC (hai góc tương ứng)",
+      "voiceExplanation": "Sang câu b. Vì tam giác A B M bằng tam giác A C M nên góc A M B bằng góc A M C, đây là hai góc tương ứng.",
+      "highlightSegments": [
+        "A-M",
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "M",
+        "B",
+        "C"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Mà ∠AMB + ∠AMC = 180° (hai góc kề bù)",
+      "voiceExplanation": "Mặt khác, góc A M B cộng góc A M C bằng 180 độ vì đây là hai góc kề bù.",
+      "highlightSegments": [
+        "B-M",
+        "M-C",
+        "A-M"
+      ],
+      "highlightPoints": [
+        "B",
+        "M",
+        "C",
+        "A"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Suy ra ∠AMB = ∠AMC = 180° : 2 = 90°",
+      "voiceExplanation": "Từ đó suy ra góc A M B bằng góc A M C và bằng 180 độ chia 2, bằng 90 độ.",
+      "highlightSegments": [
+        "A-M",
+        "B-M",
+        "M-C"
+      ],
+      "highlightPoints": [
+        "A",
+        "M",
+        "B",
+        "C"
+      ],
+      "highlightPolygons": []
+    }
+  ],
+  "audioManifest": [
+    {
+      "stepIndex": 0,
+      "file": "step_0.mp3",
+      "durationSec": 4.34
+    },
+    {
+      "stepIndex": 1,
+      "file": "step_1.mp3",
+      "durationSec": 12.43
+    },
+    {
+      "stepIndex": 2,
+      "file": "step_2.mp3",
+      "durationSec": 8.88
+    },
+    {
+      "stepIndex": 3,
+      "file": "step_3.mp3",
+      "durationSec": 5.35
+    },
+    {
+      "stepIndex": 4,
+      "file": "step_4.mp3",
+      "durationSec": 3.89
+    },
+    {
+      "stepIndex": 5,
+      "file": "step_5.mp3",
+      "durationSec": 5.98
+    },
+    {
+      "stepIndex": 6,
+      "file": "step_6.mp3",
+      "durationSec": 4.44
+    },
+    {
+      "stepIndex": 7,
+      "file": "step_7.mp3",
+      "durationSec": 6.43
+    },
+    {
+      "stepIndex": 8,
+      "file": "step_8.mp3",
+      "durationSec": 8.78
+    },
+    {
+      "stepIndex": 9,
+      "file": "step_9.mp3",
+      "durationSec": 6.43
+    },
+    {
+      "stepIndex": 10,
+      "file": "step_10.mp3",
+      "durationSec": 6.98
+    }
+  ],
+  "updatedAt": "2026-11-27T09:29:01.810Z"
+}

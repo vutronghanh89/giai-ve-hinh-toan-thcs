@@ -1,5 +1,15 @@
 [
   {
+    "id": "toan-7-chung-minh-hai-tam-giac-bang-nhau-va-tinh-goc",
+    "grade": "Toán 7",
+    "topic": "Hai tam giác bằng nhau (c.c.c)",
+    "title": "Chứng minh hai tam giác bằng nhau và tính góc",
+    "path": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-tinh-goc/data.json",
+    "audioBasePath": "/lessons/toan-7/chung-minh-hai-tam-giac-bang-nhau-va-tinh-goc/audio",
+    "hasStaticAudio": true,
+    "updatedAt": "2026-11-27T09:29:01.810Z"
+  },
+  {
     "id": "toan-8-duong-trung-binh-trong-tam-giac-vuong",
     "grade": "Toán 8",
     "topic": "Đường trung bình của tam giác",
