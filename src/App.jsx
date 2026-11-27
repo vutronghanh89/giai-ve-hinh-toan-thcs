@@ -18,7 +18,8 @@ import {
   CheckCircle2,
   Github,
   Sparkles,
-  FileText
+  FileText,
+  Video
 } from 'lucide-react';
 import GeometryCanvas from './components/GeometryCanvas.jsx';
 import DraftStudioDrawer from './components/DraftStudioDrawer.jsx';
@@ -28,6 +29,7 @@ import {
   saveGithubConfigToLocal,
   testGithubConnection
 } from './services/githubStorageService.js';
+import { exportLessonToMp4 } from './services/videoExporter.js';
 
 const API_KEY_STORAGE = 'toan_hinh_gemini_api_key';
 const GRADES = ['Toán 6', 'Toán 7', 'Toán 8', 'Toán 9'];
@@ -79,10 +81,16 @@ export default function App() {
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
 
+  // Trạng thái xuất video MP4
+  const [isExportingVideo, setIsExportingVideo] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ percent: 0, currentSec: 0, totalSec: 0 });
+  const exportAbortRef = useRef(null);
+
   // Phần tử Audio tải trước (preload="auto") duy nhất
   const masterAudioRef = useRef(null);
   const legacyStepAudioRef = useRef(null);
   const animFrameRef = useRef(null);
+  const stepsContainerRef = useRef(null);
   const activeStepBoxRef = useRef(null);
   const lastSyncedGlobalStepRef = useRef(-1);
 
@@ -141,7 +149,11 @@ export default function App() {
     if (!activeProblem) return null;
 
     // 1. Bản nháp trong RAM đã có sẵn Blob URL thống nhất
-    if (activeProblem._unifiedAudioUrl && Array.isArray(activeProblem.audioTimeline) && activeProblem.audioTimeline.length > 0) {
+    if (
+      activeProblem._unifiedAudioUrl &&
+      Array.isArray(activeProblem.audioTimeline) &&
+      activeProblem.audioTimeline.length > 0
+    ) {
       return {
         src: activeProblem._unifiedAudioUrl,
         timeline: activeProblem.audioTimeline
@@ -321,11 +333,21 @@ export default function App() {
     return st?.voiceExplanation || st?.lineText || '';
   }, [activeProblem, mode, currentStepIndex]);
 
-  // Cuộn mượt tới dòng lời giải đang giảng
+  // Tự động cuộn mượt bên trong khung danh sách các bước (đưa bước đang giảng lên vùng 1/3 phía trên)
   useEffect(() => {
-    if (activeStepBoxRef.current) {
-      activeStepBoxRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    const container = stepsContainerRef.current;
+    const activeEl = activeStepBoxRef.current;
+    if (!container || !activeEl) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = activeEl.getBoundingClientRect();
+    const relativeTop = activeRect.top - containerRect.top;
+    const targetScrollTop = container.scrollTop + relativeTop - container.clientHeight * 0.28;
+
+    container.scrollTo({
+      top: Math.max(0, targetScrollTop),
+      behavior: 'smooth'
+    });
   }, [mode, currentStepIndex]);
 
   // =========================================================================
@@ -340,7 +362,6 @@ export default function App() {
     const timeline = unifiedAudioConfig.timeline;
     let cancelled = false;
 
-    // Nếu âm thanh đã chạy hết bài mà bấm Phát lại -> quay về từ đầu (0.0s)
     const totalDur =
       audioDuration || timeline[timeline.length - 1]?.endSec || audio.duration || 0;
     if (totalDur > 0 && audio.currentTime >= totalDur - 0.15) {
@@ -362,7 +383,6 @@ export default function App() {
       const t = audio.currentTime;
       setAudioCurrentTime(t);
 
-      // Tìm mốc bước tương ứng với thời điểm t hiện tại
       let activeCue = timeline[0];
       for (let i = 0; i < timeline.length; i++) {
         const c = timeline[i];
@@ -388,10 +408,8 @@ export default function App() {
           }
         }
 
-        // Tính tiến độ nét vẽ khớp chính xác với thời lượng đọc của bước đó
         const cueSpan = Math.max(0.15, activeCue.endSec - activeCue.startSec);
         const elapsedInCue = Math.max(0, t - activeCue.startSec);
-        // Hoàn thành nét vẽ ở 88% thời lượng câu nói để học sinh kịp nhìn rõ hình hoàn chỉnh
         const p = Math.min(1, elapsedInCue / (cueSpan * 0.88));
         setStepProgress(p);
       }
@@ -456,7 +474,6 @@ export default function App() {
       }
     };
 
-    // Hỗ trợ bài cũ có các tệp step_0.mp3, step_1.mp3...
     let legacyAudioUrl = null;
     if (activeProblem.hasStaticAudio && activeProblem.audioBasePath) {
       const manifestItem = activeProblem.audioManifest?.find((m) => m.stepIndex === globalStepIndex);
@@ -495,6 +512,51 @@ export default function App() {
     };
   }, [isPlaying, mode, currentStepIndex, activeProblem, unifiedAudioConfig]);
 
+  // =========================================================================
+  // XUẤT VIDEO MP4 CÓ ÂM THANH BÀI GIẢNG
+  // =========================================================================
+  const handleExportMp4 = async () => {
+    if (!activeProblem || isExportingVideo) return;
+    stopPlayback();
+
+    const controller = new AbortController();
+    exportAbortRef.current = controller;
+    setIsExportingVideo(true);
+    setExportProgress({ percent: 0, currentSec: 0, totalSec: 0 });
+
+    try {
+      const result = await exportLessonToMp4({
+        problem: activeProblem,
+        unifiedAudioConfig,
+        showGrid,
+        showTools,
+        cancelSignal: controller.signal,
+        onProgress: (info) => setExportProgress(info)
+      });
+
+      if (result.isMp4) {
+        showToast('Đã tải xuống video MP4 bài giảng đầy đủ hình vẽ, lời giải & âm thanh!');
+      } else {
+        showToast('Đã tải xuống video bài giảng (định dạng WebM do trình duyệt hỗ trợ).');
+      }
+    } catch (err) {
+      if (err.message === 'CANCELLED') {
+        showToast('Đã hủy quá trình xuất video.');
+      } else {
+        showToast(`Lỗi xuất video: ${err.message}`);
+      }
+    } finally {
+      setIsExportingVideo(false);
+      exportAbortRef.current = null;
+    }
+  };
+
+  const handleCancelExportMp4 = () => {
+    if (exportAbortRef.current) {
+      exportAbortRef.current.abort();
+    }
+  };
+
   const handleSaveSettings = () => {
     const cleanKey = apiKeyDraft.trim();
     setGeminiApiKey(cleanKey);
@@ -527,7 +589,6 @@ export default function App() {
     masterAudioRef.current.currentTime = targetSec;
     setAudioCurrentTime(targetSec);
 
-    // Cập nhật ngay bước hiển thị kể cả khi đang tạm dừng
     const timeline = unifiedAudioConfig.timeline;
     const cue =
       timeline.find((c) => targetSec >= c.startSec && targetSec < c.endSec) ||
@@ -553,18 +614,18 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1120] text-slate-100 flex flex-col">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-[#0b1120] text-slate-100 flex flex-col">
       {/* Thanh điều hướng trên cùng */}
-      <header className="px-4 py-2.5 bg-slate-950/90 border-b border-slate-800/90 flex flex-wrap items-center justify-between gap-3">
+      <header className="shrink-0 px-4 py-2 bg-slate-950/90 border-b border-slate-800/90 flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-950">
-            <Compass className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-950">
+            <Compass className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h1 className="text-sm sm:text-base font-bold text-white tracking-tight">
+            <h1 className="text-sm sm:text-base font-bold text-white tracking-tight leading-tight">
               Giải & Vẽ Hình Toán Hình Học THCS
             </h1>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-400 leading-tight">
               Đồng bộ âm thanh tức thì • Kho bài mẫu rời • Lưu tự động lên GitHub
             </p>
           </div>
@@ -579,7 +640,7 @@ export default function App() {
                 setSelectedGrade(g);
                 setSelectedTopic('Tất cả');
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
                 selectedGrade === g
                   ? 'bg-sky-500 text-slate-950 shadow'
                   : 'text-slate-400 hover:text-white'
@@ -594,9 +655,9 @@ export default function App() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setDraftStudioOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-md"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-md"
           >
-            <PlusCircle className="w-4 h-4" />
+            <PlusCircle className="w-3.5 h-3.5" />
             <span>{draftProblem ? 'Tiếp tục sửa bản nháp' : 'Nạp đề mới'}</span>
           </button>
 
@@ -606,7 +667,7 @@ export default function App() {
               setGithubDraft(githubConfig);
               setSettingsModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700"
             title="Cài đặt Gemini API Key & GitHub"
           >
             <Key className="w-3.5 h-3.5 text-sky-400" />
@@ -617,7 +678,7 @@ export default function App() {
       </header>
 
       {/* Thanh chọn Dạng bài & Danh sách bài mẫu của khối lớp */}
-      <div className="px-4 py-2 bg-slate-900/60 border-b border-slate-800/80 flex flex-wrap items-center gap-2 text-xs">
+      <div className="shrink-0 px-4 py-1.5 bg-slate-900/60 border-b border-slate-800/80 flex flex-wrap items-center gap-2 text-xs">
         <span className="text-slate-400 font-semibold flex items-center gap-1">
           <BookOpen className="w-3.5 h-3.5 text-sky-400" />
           <span>Dạng bài:</span>
@@ -634,7 +695,7 @@ export default function App() {
           ))}
         </select>
 
-        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-0.5">
+        <div className="flex-1 flex items-center gap-1.5 overflow-x-auto py-0.5 custom-scrollbar">
           {filteredCatalog.map((item) => {
             const isSelected = activeProblem?.id === item.id;
             return (
@@ -670,10 +731,10 @@ export default function App() {
       </div>
 
       {/* Khu vực trình chiếu chính: Trái (Canvas Hình vẽ) - Phải (Đề bài, GT-KL & Lời giải) */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 overflow-hidden">
-        {/* Cột trái: Bảng vẽ hình */}
-        <div className="lg:col-span-7 flex flex-col gap-2 min-h-[380px]">
-          <div className="flex-1 relative">
+      <main className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 p-2.5 overflow-hidden">
+        {/* Cột trái: Bảng vẽ hình + Thanh điều khiển phát & Tải video MP4 */}
+        <div className="lg:col-span-7 flex flex-col gap-2 min-h-0 h-full">
+          <div className="flex-1 min-h-[240px] lg:min-h-0 relative">
             {isLoadingLesson ? (
               <div className="w-full h-full rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-center gap-2 text-xs text-slate-400">
                 <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
@@ -694,15 +755,17 @@ export default function App() {
             ) : (
               <div className="w-full h-full rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col items-center justify-center gap-3 p-6 text-center">
                 <Sparkles className="w-8 h-8 text-amber-400" />
-                <p className="text-sm text-slate-300">Chưa có bài mẫu trong mục này. Bấm "Nạp đề mới" để tạo bài đầu tiên!</p>
+                <p className="text-sm text-slate-300">
+                  Chưa có bài mẫu trong mục này. Bấm "Nạp đề mới" để tạo bài đầu tiên!
+                </p>
               </div>
             )}
           </div>
 
           {/* Thanh điều khiển trình chiếu hình vẽ + Thanh tua tiến trình âm thanh */}
           {activeProblem && (
-            <div className="px-3 py-2 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2 text-xs">
-              {/* Thanh tua mốc thời gian âm thanh (hiện khi bài có 1 file audio đồng bộ) */}
+            <div className="shrink-0 px-3 py-2 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-1.5 text-xs">
+              {/* Thanh tua mốc thời gian âm thanh */}
               {unifiedAudioConfig && audioDuration > 0 && (
                 <div className="flex items-center gap-2.5 px-1">
                   <span className="text-[11px] font-mono text-slate-400 w-10 text-right shrink-0">
@@ -710,7 +773,7 @@ export default function App() {
                   </span>
                   <div
                     onClick={handleTimelineScrub}
-                    className="relative flex-1 h-2 rounded-full bg-slate-800 cursor-pointer overflow-hidden group"
+                    className="relative flex-1 h-1.5 rounded-full bg-slate-800 cursor-pointer overflow-hidden group"
                     title="Bấm vào vị trí bất kỳ để tua nhanh bài giảng"
                   >
                     <div
@@ -726,14 +789,15 @@ export default function App() {
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => {
                       stopPlayback();
                       jumpToGlobalStep(0, false);
                     }}
-                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
+                    disabled={isExportingVideo}
+                    className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200"
                     title="Về đầu bài"
                   >
                     <SkipBack className="w-3.5 h-3.5" />
@@ -744,7 +808,8 @@ export default function App() {
                       if (!unifiedAudioConfig) stopPlayback();
                       jumpToGlobalStep(globalStepIndex - 1, wasPlaying);
                     }}
-                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
+                    disabled={isExportingVideo}
+                    className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200"
                     title="Bước trước"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
@@ -752,7 +817,8 @@ export default function App() {
 
                   <button
                     onClick={() => setIsPlaying((p) => !p)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold bg-sky-500 hover:bg-sky-400 text-slate-950"
+                    disabled={isExportingVideo}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-slate-950"
                   >
                     {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                     <span>{isPlaying ? 'Tạm dừng' : 'Phát bài giảng'}</span>
@@ -764,7 +830,8 @@ export default function App() {
                       if (!unifiedAudioConfig) stopPlayback();
                       jumpToGlobalStep(globalStepIndex + 1, wasPlaying);
                     }}
-                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
+                    disabled={isExportingVideo}
+                    className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200"
                     title="Bước tiếp theo"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -772,17 +839,18 @@ export default function App() {
 
                   <button
                     onClick={cyclePlaybackRate}
-                    className="px-2 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-300 font-mono text-[11px] font-bold"
+                    disabled={isExportingVideo}
+                    className="px-2 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-sky-300 font-mono text-[11px] font-bold"
                     title="Đổi tốc độ giảng bài"
                   >
                     {playbackRate}x
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     onClick={() => setShowFullFigure((v) => !v)}
-                    className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium ${
+                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-medium ${
                       showFullFigure
                         ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
                         : 'bg-slate-950 border-slate-800 text-slate-400'
@@ -793,7 +861,7 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => setShowTools((v) => !v)}
-                    className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-medium ${
+                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-medium ${
                       showTools
                         ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
                         : 'bg-slate-950 border-slate-800 text-slate-400'
@@ -820,7 +888,29 @@ export default function App() {
                     {isMuted ? (
                       <VolumeX className="w-3.5 h-3.5 text-rose-400" />
                     ) : (
-                      <Volume2 className={`w-3.5 h-3.5 ${audioReady ? 'text-emerald-400' : 'text-sky-400'}`} />
+                      <Volume2
+                        className={`w-3.5 h-3.5 ${audioReady ? 'text-emerald-400' : 'text-sky-400'}`}
+                      />
+                    )}
+                  </button>
+
+                  {/* Nút tải video MP4 bài giảng */}
+                  <button
+                    onClick={handleExportMp4}
+                    disabled={isExportingVideo}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-60 text-slate-950 shadow"
+                    title="Xuất và tải video MP4 có đầy đủ hình vẽ, lời giải và âm thanh"
+                  >
+                    {isExportingVideo ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Đang xuất {exportProgress.percent}%</span>
+                      </>
+                    ) : (
+                      <>
+                        <Video className="w-3.5 h-3.5" />
+                        <span>Tải video MP4</span>
+                      </>
                     )}
                   </button>
                 </div>
@@ -829,12 +919,12 @@ export default function App() {
           )}
         </div>
 
-        {/* Cột phải: Đề bài, GT-KL & Lời giải chi tiết */}
-        <div className="lg:col-span-5 flex flex-col gap-2.5 overflow-y-auto pr-0.5">
+        {/* Cột phải: Đề bài, GT-KL & Danh sách các bước có thanh cuộn riêng */}
+        <div className="lg:col-span-5 flex flex-col gap-2 min-h-0 h-full overflow-hidden">
           {activeProblem && (
             <>
               {/* Khung Đề bài */}
-              <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
+              <div className="shrink-0 max-h-[38%] overflow-y-auto custom-scrollbar p-3 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1">
                     <FileText className="w-3.5 h-3.5" />
@@ -852,16 +942,16 @@ export default function App() {
 
                 {/* Bảng GT - KL */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-xs">
-                  <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800/80">
-                    <div className="font-bold text-amber-400 mb-1">GT</div>
+                  <div className="p-2 rounded-xl bg-slate-950/90 border border-slate-800/80">
+                    <div className="font-bold text-amber-400 mb-0.5">GT</div>
                     <ul className="space-y-0.5 text-slate-200">
                       {(activeProblem.given || []).map((g, i) => (
                         <li key={i}>• {g}</li>
                       ))}
                     </ul>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800/80">
-                    <div className="font-bold text-emerald-400 mb-1">KL</div>
+                  <div className="p-2 rounded-xl bg-slate-950/90 border border-slate-800/80">
+                    <div className="font-bold text-emerald-400 mb-0.5">KL</div>
                     <ul className="space-y-0.5 text-slate-200">
                       {(activeProblem.prove || []).map((p, i) => (
                         <li key={i}>• {p}</li>
@@ -872,7 +962,7 @@ export default function App() {
               </div>
 
               {/* Chuyển tab Vẽ hình / Lời giải */}
-              <div className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+              <div className="shrink-0 flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
                 <button
                   onClick={() => {
                     const wasPlaying = isPlaying;
@@ -880,7 +970,9 @@ export default function App() {
                     jumpToGlobalStep(0, wasPlaying);
                   }}
                   className={`flex-1 py-1.5 rounded-lg font-bold transition ${
-                    mode === 'drawing' ? 'bg-sky-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                    mode === 'drawing'
+                      ? 'bg-sky-500 text-slate-950'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Các bước vẽ hình ({totalDrawingSteps})
@@ -892,15 +984,20 @@ export default function App() {
                     jumpToGlobalStep(totalDrawingSteps, wasPlaying);
                   }}
                   className={`flex-1 py-1.5 rounded-lg font-bold transition ${
-                    mode === 'solving' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                    mode === 'solving'
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Lời giải chi tiết ({totalSolutionSteps})
                 </button>
               </div>
 
-              {/* Danh sách từng bước */}
-              <div className="flex-1 overflow-y-auto space-y-1.5 p-3 rounded-2xl bg-slate-900/90 border border-slate-800">
+              {/* Danh sách từng bước có thanh cuộn lên/xuống riêng & tự cuộn mượt theo lời dẫn */}
+              <div
+                ref={stepsContainerRef}
+                className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-1.5 p-2.5 rounded-2xl bg-slate-900/90 border border-slate-800"
+              >
                 {mode === 'drawing'
                   ? (activeProblem.drawingSteps || []).map((st, idx) => {
                       const active = idx === currentStepIndex;
@@ -915,7 +1012,7 @@ export default function App() {
                           }}
                           className={`p-2.5 rounded-xl border text-xs cursor-pointer transition ${
                             active
-                              ? 'bg-sky-950/60 border-sky-500/60 text-sky-100'
+                              ? 'bg-sky-950/70 border-sky-500/70 text-sky-100 shadow-sm'
                               : 'bg-slate-950/70 border-slate-800/70 text-slate-300 hover:border-slate-700'
                           }`}
                         >
@@ -937,7 +1034,7 @@ export default function App() {
                           }}
                           className={`p-2.5 rounded-xl border text-xs sm:text-sm cursor-pointer transition whitespace-pre-line ${
                             active
-                              ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-100 font-medium'
+                              ? 'bg-emerald-950/70 border-emerald-500/70 text-emerald-100 font-medium shadow-sm'
                               : 'bg-slate-950/70 border-slate-800/70 text-slate-300 hover:border-slate-700'
                           }`}
                         >
@@ -953,14 +1050,54 @@ export default function App() {
 
       {/* Dải phụ đề chạy phía dưới màn hình */}
       {activeProblem && (
-        <footer className="px-4 py-2 bg-slate-950 border-t border-slate-800/90 flex items-center gap-3 text-xs">
-          <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold shrink-0">
-            {mode === 'drawing' ? `Vẽ ${currentStepIndex + 1}/${totalDrawingSteps}` : `Giải ${currentStepIndex + 1}/${totalSolutionSteps}`}
+        <footer className="shrink-0 px-4 py-2 bg-slate-950 border-t border-slate-800/90 flex items-center gap-3 text-xs">
+          <span
+            className={`px-2 py-0.5 rounded font-bold shrink-0 ${
+              mode === 'drawing'
+                ? 'bg-sky-500/20 text-sky-300'
+                : 'bg-emerald-500/20 text-emerald-300'
+            }`}
+          >
+            {mode === 'drawing'
+              ? `Vẽ ${currentStepIndex + 1}/${totalDrawingSteps}`
+              : `Giải ${currentStepIndex + 1}/${totalSolutionSteps}`}
           </span>
-          <div className="flex-1 truncate text-slate-200 font-medium">
-            {currentNarrationText}
-          </div>
+          <div className="flex-1 truncate text-slate-200 font-medium">{currentNarrationText}</div>
         </footer>
+      )}
+
+      {/* Hộp tiến trình khi đang xuất video MP4 */}
+      {isExportingVideo && (
+        <div className="fixed bottom-12 left-4 z-50 w-80 rounded-2xl bg-slate-900/95 border border-emerald-500/50 p-3.5 shadow-2xl space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-emerald-300 flex items-center gap-1.5">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Đang tạo video MP4 bài giảng...</span>
+            </span>
+            <span className="font-mono font-bold text-white">{exportProgress.percent}%</span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-sky-400 to-emerald-400 transition-[width] duration-150"
+              style={{ width: `${exportProgress.percent}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-slate-400">
+            <span>
+              {exportProgress.totalSec > 0
+                ? `${formatSecondsMMSS(exportProgress.currentSec)} / ${formatSecondsMMSS(
+                    exportProgress.totalSec
+                  )}`
+                : 'Giữ nguyên tab trình duyệt để ghi hình...'}
+            </span>
+            <button
+              onClick={handleCancelExportMp4}
+              className="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold"
+            >
+              Hủy xuất
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Drawer Biên soạn & Hiệu chỉnh bài mới */}
@@ -1001,7 +1138,10 @@ export default function App() {
                 <Key className="w-4 h-4 text-sky-400" />
                 <span>Cài đặt Gemini API & Lưu trữ GitHub</span>
               </h3>
-              <button onClick={() => setSettingsModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button
+                onClick={() => setSettingsModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1034,7 +1174,9 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 mb-1">GitHub Personal Access Token (quyền Contents: Read & Write)</label>
+                  <label className="block text-slate-400 mb-1">
+                    GitHub Personal Access Token (quyền Contents: Read & Write)
+                  </label>
                   <input
                     type="password"
                     value={githubDraft.token}
