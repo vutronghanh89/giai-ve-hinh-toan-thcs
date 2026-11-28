@@ -33,6 +33,16 @@
   overflow-y: hidden;
 }
 
+.math-line {
+  margin-bottom: 0.2rem;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.math-line:last-child {
+  margin-bottom: 0;
+}
+
 .math-eq-line .katex .mfrac {
   margin: 0.08em 0.08em;
 }
