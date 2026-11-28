@@ -1,22 +1,16 @@
-# Hướng dẫn cập nhật mã nguồn Web Giải & Vẽ Hình Toán Hình Học THCS (v3.0.0)
+# Hướng dẫn cập nhật mã nguồn Giải & Vẽ Hình Toán THCS (v3.0.0)
 
-## Các nâng cấp chính trong phiên bản này
-1. **Tự động tách dòng công thức dài & chống dính chữ tiếng Việt (`src/components/MathText.jsx`):**
-   - Các dòng có lời dẫn kèm công thức dài tự động tách phần công thức xuống dòng riêng bên dưới.
-   - Các chuỗi biến đổi có nhiều dấu `=` / `≈` tự động tách mỗi vế biến đổi thành 1 dòng riêng biệt, không bị ngắt gãy lửng lơ giữa chừng.
-   - Tự động xử lý khoảng trắng tiếng Việt & đơn vị đo lường bên trong biểu thức LaTeX (`tại`, `và`, `cm`, `độ`...).
-2. **Lời giải gọn gàng, bỏ đánh số đầu dòng & tự động cuộn đồng bộ (`src/App.jsx`):**
-   - Loại bỏ số thứ tự tròn ở đầu các bước lời giải, thu gọn giãn dòng và khoảng cách thẻ.
-   - Tự động cuộn mượt tới đúng dòng lời giải đang thuyết minh để học sinh luôn theo dõi được.
-3. **Tự động căn tâm & thu phóng toàn bộ hình vẽ vừa khít khung (`src/components/GeometryCanvas.jsx`):**
-   - Tính toán vùng bao thực tế của tất cả điểm, nhãn điểm, cung tròn/đường tròn, tia và đường thẳng để tự động căn giữa và thu phóng vừa khít khung hình, không bao giờ bị tràn hoặc cắt mất đỉnh/tâm.
-4. **Bố cục chuẩn 4 khung + Thanh thuyết minh, Tiến trình & Xuất Video (`src/App.jsx`, `src/services/videoExporter.js`):**
-   - Hàng trên: **Đề bài** | **GT - KL** (có thanh cuộn độc lập nếu nội dung dài).
-   - Hàng dưới: **Hình vẽ** (luôn hiển thị cố định trọn vẹn) | **Lời giải**.
-   - Thanh điều khiển cố định bên dưới gồm 3 tầng: **Lời thuyết minh** -> **Thanh tiến trình** -> **Tự động giảng, Tốc độ, Loa, ... Tải video**.
+## Những nâng cấp chính trong bản cập nhật này
+1. **Video xuất ra chuẩn `.mp4` và đồng nhất 100% với giao diện Web (`src/services/videoExportService.js`):**
+   - Xuất trực tiếp tệp định dạng `.mp4` (chuẩn H.264 + AAC qua WebCodecs & `mp4-muxer`, tự động fallback trên trình duyệt cũ).
+   - Bố cục video Full HD 1920x1080 hiển thị đầy đủ: **Tiêu đề + Đề bài + GT - KL + Hình vẽ minh họa + Lời giải chi tiết** (lược bỏ khung phụ đề và thanh tua bên dưới).
+   - Ký hiệu toán học (dấu mũ góc $\widehat{DAE}$, phân số dọc $\dfrac{a}{b}$, căn thức, ký hiệu vuông góc, song song...) hiển thị sắc nét bằng KaTeX giống hệt trên trang web.
+2. **Sửa triệt để lỗi bấm/kéo tua thanh thời gian bị nhảy về ban đầu (`src/App.jsx`):**
+   - Tải trước âm thanh MP3 vào bộ nhớ đệm cục bộ (`Blob URL`) giúp trình duyệt tua tức thì đến mọi giây mà không bị lỗi HTTP Range hay reset `currentTime` về 0.
+   - Khóa xung đột sự kiện `timeupdate` khi giáo viên đang bấm hoặc kéo thanh tua (`isSeekingRef`), đồng thời hỗ trợ bấm trực tiếp vào từng dòng lời giải để nhảy nhanh tới bước đó.
 
 ## Cách cập nhật lên GitHub / Cloudflare Pages
-1. Giải nén tệp `giai-ve-hinh-toan-thcs-v3.zip`.
-2. Giữ nguyên thư mục `public/lessons/` hiện có trên repository GitHub của thầy (nơi lưu các bài mẫu và tệp âm thanh).
-3. Chép đè toàn bộ các tệp trong gói mới này (`package.json`, `index.html`, `src/...`, `vite.config.js`, `tailwind.config.js`, `postcss.config.js`) vào repository GitHub và Commit.
-4. Cloudflare Pages sẽ tự động build và cập nhật trang web sau khoảng 1 phút.
+1. Giải nén tệp `giai-ve-hinh-toan-thcs-v3-mp4-fix.zip`.
+2. Giữ nguyên thư mục `public/lessons/` hiện có trên repository GitHub của thầy (nơi chứa các bài mẫu và tệp âm thanh).
+3. Chép đè toàn bộ các tệp trong gói này (`package.json`, `index.html`, `src/...`, `vite.config.js`, `tailwind.config.js`, `postcss.config.js`) lên repository GitHub và **Commit**.
+4. Cloudflare Pages sẽ tự động chạy `npm install && npm run build` và cập nhật trang web sau khoảng 1 phút.

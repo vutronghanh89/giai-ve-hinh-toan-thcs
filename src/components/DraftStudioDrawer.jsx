@@ -386,183 +386,119 @@ export default function DraftStudioDrawer({
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-950/50 transition hover:bg-indigo-500 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                <span>Phân tích & Dựng bài giảng tự động</span>
+                <span>Phân tích đề & Tạo bài giảng 2D</span>
               </button>
             </>
           )}
 
-          {activeTab === 'edit' && (
+          {activeTab === 'edit' && draft && (
             <>
-              {!draft ? (
-                <p className="text-xs text-slate-400">
-                  Chưa có bản nháp. Hãy sang tab 1 để nhập đề bài hoặc mở sẵn một bài mẫu trên màn hình chính.
-                </p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <div>
-                      <label className="mb-1 block text-[11px] text-slate-400">Khối lớp</label>
-                      <select
-                        value={draft.grade || 'Toán 7'}
-                        onChange={(e) => setDraft({ ...draft, grade: e.target.value })}
-                        className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-2 text-xs text-white"
-                      >
-                        <option>Toán 6</option>
-                        <option>Toán 7</option>
-                        <option>Toán 8</option>
-                        <option>Toán 9</option>
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="mb-1 block text-[11px] text-slate-400">Tên bài toán</label>
-                      <input
-                        type="text"
-                        value={draft.title || ''}
-                        onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                        className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-white"
-                      />
-                    </div>
-                  </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3.5">
+                <div className="mb-2 text-xs font-bold text-indigo-300">
+                  Hiệu chỉnh hình vẽ / lời giải bằng chat
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chatPrompt}
+                    onChange={(e) => setChatPrompt(e.target.value)}
+                    placeholder="VD: Đổi nét đứt cho đường cao AH, làm rõ bước chứng minh 2..."
+                    className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 focus:border-indigo-400 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    disabled={loading || !chatPrompt.trim()}
+                    onClick={handleRefineChat}
+                    className="flex items-center gap-1 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span>Sửa</span>
+                  </button>
+                </div>
+              </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <label className="mb-1.5 block text-xs font-semibold text-indigo-300">
-                      Yêu cầu AI chỉnh sửa hình vẽ / lời giải
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={chatPrompt}
-                        onChange={(e) => setChatPrompt(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleRefineChat()}
-                        placeholder="VD: Đổi tên điểm M thành E, tách nhỏ bước tính phân số..."
-                        className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-                      />
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={handleRefineChat}
-                        className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                        <span>Sửa</span>
-                      </button>
-                    </div>
-                  </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300">
+                  Danh sách các bước thuyết minh ({audioEntriesMap.size}/{timelineItems.length} đã có âm thanh)
+                </span>
+                <button
+                  type="button"
+                  disabled={generatingAudioIdx !== -1}
+                  onClick={handleGenerateAllAudio}
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                >
+                  <Volume2 className="h-3.5 w-3.5" />
+                  <span>
+                    {generatingAudioIdx !== -1
+                      ? cooldownSec > 0
+                        ? `Đợi ${cooldownSec}s...`
+                        : `Đang đọc bước ${generatingAudioIdx + 1}...`
+                      : 'Tạo giọng đọc tất cả'}
+                  </span>
+                </button>
+              </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-300">
-                      Xem trước công thức & Giọng đọc từng bước ({audioEntriesMap.size}/{timelineItems.length})
-                    </span>
-                    <button
-                      type="button"
-                      disabled={generatingAudioIdx !== -1}
-                      onClick={handleGenerateAllAudio}
-                      className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+              <div className="space-y-2">
+                {timelineItems.map((item) => {
+                  const hasAudio = audioEntriesMap.has(item.index);
+                  return (
+                    <div
+                      key={item.index}
+                      className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-xs"
                     >
-                      <Volume2 className="h-3.5 w-3.5" />
-                      <span>
-                        {generatingAudioIdx !== -1
-                          ? cooldownSec > 0
-                            ? `Đợi ${cooldownSec}s...`
-                            : `Đang đọc bước ${generatingAudioIdx + 1}...`
-                          : 'Tạo toàn bộ giọng đọc'}
-                      </span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {timelineItems.map((item) => {
-                      const audioEntry = audioEntriesMap.get(item.index);
-                      const isBusy = generatingAudioIdx === item.index;
-                      return (
-                        <div
-                          key={item.index}
-                          className="rounded-xl border border-slate-800 bg-slate-900/80 p-3 text-xs"
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="font-bold text-sky-300">{item.label}</span>
+                        <button
+                          type="button"
+                          disabled={generatingAudioIdx !== -1}
+                          onClick={() => handleGenerateSingleAudio(item)}
+                          className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
+                            hasAudio
+                              ? 'bg-emerald-500/20 text-emerald-300'
+                              : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                          }`}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <span
-                              className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                                item.kind === 'draw'
-                                  ? 'bg-sky-500/20 text-sky-300'
-                                  : 'bg-emerald-500/20 text-emerald-300'
-                              }`}
-                            >
-                              {item.label}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              {audioEntry?.url && (
-                                <button
-                                  type="button"
-                                  onClick={() => new Audio(audioEntry.url).play()}
-                                  className="rounded-lg bg-slate-800 px-2 py-1 text-[11px] text-emerald-300 hover:bg-slate-700"
-                                >
-                                  Nghe thử
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                disabled={generatingAudioIdx !== -1}
-                                onClick={() => handleGenerateSingleAudio(item)}
-                                className="rounded-lg bg-slate-800 px-2.5 py-1 text-[11px] text-slate-200 hover:bg-slate-700 disabled:opacity-50"
-                              >
-                                {isBusy ? 'Đang tạo...' : audioEntry ? 'Tạo lại' : 'Tạo giọng'}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="mt-2 text-slate-100">
-                            <MathText text={item.displayText} />
-                          </div>
-                          <div className="mt-1.5 text-[11px] italic text-slate-400">
-                            Lời đọc: "{item.voiceText}"
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+                          {hasAudio ? 'Đã có giọng đọc' : 'Tạo giọng đọc'}
+                        </button>
+                      </div>
+                      <MathText text={item.displayText} className="text-slate-200" />
+                    </div>
+                  );
+                })}
+              </div>
             </>
           )}
 
-          {activeTab === 'publish' && (
+          {activeTab === 'publish' && draft && (
             <div className="space-y-3">
-              {!draft ? (
-                <p className="text-xs text-slate-400">Chưa có bản nháp để xuất bản.</p>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onApplyLesson(draft, audioEntriesMap, timelineItems);
-                      onClose();
-                    }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500"
-                  >
-                    <Play className="h-4 w-4" />
-                    <span>Áp dụng & Trình chiếu ngay trên màn hình chính</span>
-                  </button>
+              <button
+                type="button"
+                onClick={() => onApplyLesson?.(draft)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500"
+              >
+                <Play className="h-4 w-4" />
+                <span>Đưa bài giảng lên màn hình trình chiếu ngay</span>
+              </button>
 
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={handleDownloadZip}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    <Download className="h-4 w-4 text-sky-400" />
-                    <span>Tải gói bài học (.zip) gồm data.json & full_audio.mp3</span>
-                  </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleDownloadZip}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-700"
+              >
+                <Download className="h-4 w-4 text-sky-400" />
+                <span>Tải gói bài giảng (.zip) về máy tính</span>
+              </button>
 
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={handlePushGithub}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-950/40 px-4 py-3 text-sm font-semibold text-indigo-200 hover:bg-indigo-900/50 disabled:opacity-50"
-                  >
-                    <UploadCloud className="h-4 w-4 text-indigo-400" />
-                    <span>Lưu trực tiếp lên GitHub (tự cập nhật web)</span>
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handlePushGithub}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-950/60 px-4 py-3 text-sm font-semibold text-indigo-200 hover:bg-indigo-900/60"
+              >
+                <UploadCloud className="h-4 w-4 text-indigo-400" />
+                <span>Lưu trực tiếp lên kho GitHub (Cloudflare Pages)</span>
+              </button>
             </div>
           )}
         </div>

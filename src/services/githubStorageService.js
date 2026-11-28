@@ -2,8 +2,8 @@
    DỊCH VỤ LƯU TRỮ TRỰC TIẾP LÊN GITHUB & ĐÓNG GÓI 1 FILE ÂM THANH DUY NHẤT
    - Ghép toàn bộ lời giảng thành 1 tệp full_audio.mp3 + bảng mốc thời gian audioTimeline
    - Mỗi bài học lưu thành thư mục riêng:
-     public/lessons/<lop>/<ten-bai-slug>/data.json
-     public/lessons/<lop>/<ten-bai-slug>/audio/full_audio.mp3
+       public/lessons/<lop>/<ten-bai-slug>/data.json
+       public/lessons/<lop>/<ten-bai-slug>/audio/full_audio.mp3
    - Cập nhật mục lục public/lessons/index.json trong 1 commit duy nhất
    ============================================================================ */
 
@@ -42,15 +42,17 @@ export function saveGithubConfigToLocal(cfg) {
 }
 
 export function slugifyVietnamese(str) {
-  return String(str || 'bai-toan')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60) || `bai-${Date.now()}`;
+  return (
+    String(str || 'bai-toan')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || `bai-${Date.now()}`
+  );
 }
 
 export function loadExternalScript(src) {
@@ -226,7 +228,8 @@ export async function testGithubConnection(config) {
 
   if (!res.ok) {
     if (res.status === 401) throw new Error('GitHub Token không hợp lệ hoặc đã hết hạn (401).');
-    if (res.status === 404) throw new Error(`Không tìm thấy repo "${owner}/${repo}" hoặc nhánh "${branch || 'main'}" (404).`);
+    if (res.status === 404)
+      throw new Error(`Không tìm thấy repo "${owner}/${repo}" hoặc nhánh "${branch || 'main'}" (404).`);
     throw new Error(`Lỗi kiểm tra GitHub (HTTP ${res.status}).`);
   }
 
@@ -286,7 +289,9 @@ export async function saveLessonDirectToGithub({
     headers
   });
   if (!refRes.ok) {
-    throw new Error(`Không truy cập được nhánh "${branch}" trên GitHub (${refRes.status}). Hãy kiểm tra Token và quyền Contents: Read & Write.`);
+    throw new Error(
+      `Không truy cập được nhánh "${branch}" trên GitHub (${refRes.status}). Hãy kiểm tra Token và quyền Contents: Read & Write.`
+    );
   }
   const refData = await refRes.json();
   const latestCommitSha = refData.object.sha;

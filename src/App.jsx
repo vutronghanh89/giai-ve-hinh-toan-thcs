@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen,
   FolderArchive,
@@ -9,15 +9,15 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Volume2,
   VolumeX,
   Eye,
   ListChecks,
   CheckCircle2,
   Video,
-  MessageSquareQuote,
-  FileText,
-  Scale,
+  Loader2,
   X
 } from 'lucide-react';
 import GeometryCanvas from './components/GeometryCanvas.jsx';
@@ -28,29 +28,28 @@ import {
   loadSavedGithubConfig,
   saveGithubConfigToLocal,
   testGithubConnection,
-  loadExternalScript,
-  buildUnifiedAudioPackage
+  loadExternalScript
 } from './services/githubStorageService.js';
-import { exportLectureVideo } from './services/videoExporter.js';
+import { exportLessonToMp4 } from './services/videoExportService.js';
 import savedSamples from './data/savedSamples.json';
 
 const API_KEY_STORAGE = 'toan_hinh_gemini_api_key';
 const JSZIP_CDN = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+const VIRTUAL_STEP_SEC = 2.6;
 
 const DEFAULT_FALLBACK_LESSON = {
   id: 'toan-9-dien-tich-hinh-quat-giay',
   grade: 'Toán 9',
   topic: 'Độ dài cung tròn & Diện tích hình quạt tròn',
-  title: 'Tính diện tích phần giấy dán của chiếc quạt giấy',
+  title: 'Tính diện tích hình quạt giấy (hình vành khuyên)',
   hasStaticAudio: false,
   problemText:
-    'Một chiếc quạt giấy khi xòe ra hoàn toàn có dạng một hình quạt tròn bán kính 24 cm và góc ở tâm bằng 150°. Phần giấy dán của quạt là một hình vành khuyên giới hạn bởi hai cung tròn đồng tâm có bán kính lần lượt là 24 cm và 10 cm ứng với góc ở tâm 150°. Tính diện tích phần giấy dán của chiếc quạt đó theo đơn vị cm² (lấy π ≈ 3,14, kết quả làm tròn đến hàng đơn vị).',
+    'Một chiếc quạt giấy khi mở rộng tối đa có dạng một hình quạt tròn bán kính R = 24 cm và góc ở tâm bằng 150°. Phần giấy dán quạt có dạng một phần hình vành khuyên giới hạn bởi hai đường tròn đồng tâm có bán kính lần lượt là 24 cm và 10 cm. Tính diện tích phần giấy dán quạt (làm tròn kết quả đến hàng phần mười, lấy π ≈ 3,14).',
   given: [
-    'Hình quạt tròn tâm O, bán kính $R = 24\\text{ cm}$, góc ở tâm $150^\\circ$',
-    'Phần giấy dán là phần hình vành khuyên giới hạn bởi hai cung tròn đồng tâm O, bán kính $R = 24\\text{ cm}$ và $r = 10\\text{ cm}$, góc ở tâm $150^\\circ$',
-    '$\\pi \\approx 3{,}14$'
+    'Bán kính quạt lớn $R = 24\\text{ cm}$, bán kính phần nan trống $r = 10\\text{ cm}$',
+    'Góc ở tâm $n = 150^\\circ$, $\\pi \\approx 3{,}14$'
   ],
-  prove: ['Tính diện tích phần giấy dán của chiếc quạt đó theo đơn vị cm² (làm tròn đến hàng đơn vị)'],
+  prove: ['Tính diện tích phần giấy dán quạt (làm tròn đến hàng phần mười)'],
   drawingSteps: [
     {
       caption: 'Vẽ tâm O và hai bán kính OA, OB tạo thành góc ở tâm 150°.',
@@ -61,7 +60,8 @@ const DEFAULT_FALLBACK_LESSON = {
     },
     {
       caption: 'Quay cung tròn lớn tâm O bán kính R = 24 cm và cung tròn nhỏ bán kính r = 10 cm.',
-      voiceExplanation: 'Bước hai, dùng compa quay cung tròn lớn bán kính 24 xen ti mét và cung tròn nhỏ bán kính 10 xen ti mét, hoàn thiện hình chiếc quạt giấy.',
+      voiceExplanation:
+        'Bước hai, dùng compa quay cung tròn lớn bán kính 24 xen ti mét và cung tròn nhỏ bán kính 10 xen ti mét, hoàn thiện hình chiếc quạt giấy.',
       tool: 'compass',
       highlightSegments: ['C-A', 'D-B'],
       highlightPoints: ['C', 'D']
@@ -102,52 +102,53 @@ const DEFAULT_FALLBACK_LESSON = {
       }
     ],
     rightAngles: [],
-    angleArcs: [
-      { vertex: 'O', p1: 'B', p2: 'A', radius: 28, label: '150°', color: 'accent', drawStep: 0 }
-    ]
+    angleArcs: [{ vertex: 'O', p1: 'B', p2: 'A', radius: 28, label: '150°', color: 'accent', drawStep: 0 }]
   },
   solutionSteps: [
     {
-      lineText:
-        'Phân tích: Diện tích phần giấy dán bằng hiệu diện tích hình quạt tròn lớn ($R = 24\\text{ cm}$, góc ở tâm $150^\\circ$) và hình quạt tròn nhỏ không dán giấy ($r = 10\\text{ cm}$, góc ở tâm $150^\\circ$).',
-      voiceExplanation:
-        'Diện tích phần giấy dán bằng hiệu diện tích hình quạt tròn lớn bán kính 24 xen ti mét và hình quạt tròn nhỏ không dán giấy bán kính 10 xen ti mét.',
+      lineText: 'Diện tích hình quạt tròn lớn (bán kính $R = 24\\text{ cm}$, góc ở tâm $n = 150^\\circ$):',
+      voiceExplanation: 'Trước tiên, ta tính diện tích hình quạt tròn lớn có bán kính 24 xen ti mét và góc ở tâm 150 độ.',
       highlightSegments: ['O-A', 'O-B'],
       highlightPoints: ['O', 'A', 'B'],
       highlightPolygons: []
     },
     {
       lineText:
-        'Diện tích hình quạt tròn lớn (bán kính $R = 24\\text{ cm}$, góc ở tâm $n = 150^\\circ$): $S_1 = \\dfrac{\\pi \\cdot R^2 \\cdot n}{360} = \\dfrac{\\pi \\cdot 24^2 \\cdot 150}{360} = 240\\pi\\ (\\text{cm}^2)$',
+        '$S_{\\text{quạt lớn}} = \\dfrac{\\pi \\cdot R^2 \\cdot n}{360} \\approx \\dfrac{3{,}14 \\cdot 24^2 \\cdot 150}{360}$\n$= \\dfrac{271296}{360} = 753{,}6\\ (\\text{cm}^2)$',
       voiceExplanation:
-        'Diện tích hình quạt tròn lớn S 1 bằng pi nhân R bình phương nhân n phần 360, bằng pi nhân 24 bình phương nhân 150 phần 360, bằng 240 pi xen ti mét vuông.',
+        'S quạt lớn bằng pi nhân R bình phương nhân n phần 360, xấp xỉ 3 phẩy 14 nhân 24 bình phương nhân 150 phần 360, bằng 753 phẩy 6 xen ti mét vuông.',
       highlightSegments: ['C-A', 'D-B'],
       highlightPoints: ['A', 'B'],
       highlightPolygons: []
     },
     {
-      lineText:
-        'Diện tích hình quạt tròn nhỏ không dán giấy (bán kính $r = 10\\text{ cm}$, góc ở tâm $n = 150^\\circ$): $S_2 = \\dfrac{\\pi \\cdot r^2 \\cdot n}{360} = \\dfrac{\\pi \\cdot 10^2 \\cdot 150}{360} = \\dfrac{125}{3}\\pi\\ (\\text{cm}^2)$',
-      voiceExplanation:
-        'Diện tích hình quạt tròn nhỏ không dán giấy S 2 bằng pi nhân r bình phương nhân n phần 360, bằng pi nhân 10 bình phương nhân 150 phần 360, bằng 125 phần 3 pi xen ti mét vuông.',
+      lineText: 'Diện tích hình quạt tròn nhỏ (bán kính $r = 10\\text{ cm}$, góc ở tâm $n = 150^\\circ$):',
+      voiceExplanation: 'Tiếp theo, ta tính diện tích phần hình quạt tròn nhỏ có bán kính 10 xen ti mét.',
       highlightSegments: ['O-C', 'O-D'],
       highlightPoints: ['O', 'C', 'D'],
       highlightPolygons: []
     },
     {
       lineText:
-        'Diện tích phần giấy dán của chiếc quạt là: $S = S_1 - S_2 = 240\\pi - \\dfrac{125}{3}\\pi = \\dfrac{595}{3}\\pi\\ (\\text{cm}^2)$',
+        '$S_{\\text{quạt nhỏ}} = \\dfrac{\\pi \\cdot r^2 \\cdot n}{360} \\approx \\dfrac{3{,}14 \\cdot 10^2 \\cdot 150}{360}$\n$= \\dfrac{47100}{360} \\approx 130{,}83\\ (\\text{cm}^2)$',
       voiceExplanation:
-        'Diện tích phần giấy dán của chiếc quạt là S bằng S 1 trừ S 2, bằng 240 pi trừ 125 phần 3 pi, bằng 595 phần 3 pi xen ti mét vuông.',
+        'S quạt nhỏ bằng pi nhân r bình phương nhân n phần 360, xấp xỉ 130 phẩy 83 xen ti mét vuông.',
+      highlightSegments: ['O-C', 'O-D'],
+      highlightPoints: ['C', 'D'],
+      highlightPolygons: []
+    },
+    {
+      lineText: 'Diện tích phần giấy dán quạt (hình vành khuyên) là:',
+      voiceExplanation: 'Cuối cùng, diện tích phần giấy dán quạt bằng hiệu diện tích hai hình quạt tròn.',
       highlightSegments: ['C-A', 'D-B'],
       highlightPoints: ['A', 'B', 'C', 'D'],
       highlightPolygons: []
     },
     {
       lineText:
-        'Thay $\\pi \\approx 3{,}14$ ta được: $S \\approx \\dfrac{595 \\cdot 3{,}14}{3} \\approx 622{,}77 \\approx 623\\ (\\text{cm}^2)$. Vậy diện tích phần giấy dán khoảng 623 cm².',
+        '$S = S_{\\text{quạt lớn}} - S_{\\text{quạt nhỏ}} \\approx 753{,}6 - 130{,}83 = 622{,}77 \\approx 622{,}8\\ (\\text{cm}^2)$',
       voiceExplanation:
-        'Thay pi xấp xỉ 3 phẩy 14 ta được S xấp xỉ 595 nhân 3 phẩy 14 phần 3, xấp xỉ 622 phẩy 77, làm tròn đến hàng đơn vị bằng 623 xen ti mét vuông.',
+        'Ta lấy 753 phẩy 6 trừ 130 phẩy 83 bằng 622 phẩy 77, làm tròn đến hàng phần mười được 622 phẩy 8 xen ti mét vuông.',
       highlightSegments: ['C-A', 'D-B'],
       highlightPoints: ['A', 'B', 'C', 'D'],
       highlightPolygons: []
@@ -155,11 +156,11 @@ const DEFAULT_FALLBACK_LESSON = {
   ]
 };
 
-function formatTimeMMSS(sec) {
-  if (!Number.isFinite(sec) || sec < 0) return '00:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+function formatTimeSec(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${String(m).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
 }
 
 export default function App() {
@@ -174,92 +175,175 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(1);
   const [showAllSolution, setShowAllSolution] = useState(false);
 
-  const [audioCurrentSec, setAudioCurrentSec] = useState(0);
-  const [audioDurationSec, setAudioDurationSec] = useState(0);
+  // State đồng bộ thanh tua thời gian (chống nhảy về 0 khi bấm/kéo tua)
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const isSeekingRef = useRef(false);
+  const seekTimeoutRef = useRef(null);
+  const virtualTimeRef = useRef(0);
+  const objectUrlToRevokeRef = useRef('');
 
-  const [isExportingVideo, setIsExportingVideo] = useState(false);
-  const [videoProgressPct, setVideoProgressPct] = useState(0);
-  const videoAbortRef = useRef(null);
+  // Xuất video .mp4
+  const [exportState, setExportState] = useState(null); // { percent, label } | null
 
+  // Modals & Drawers
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showStudioDrawer, setShowStudioDrawer] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showNarrationBox, setShowNarrationBox] = useState(true);
 
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_STORAGE) || '');
-  const [ghConfig, setGhConfig] = useState(() => loadSavedGithubConfig());
+  const [githubCfg, setGithubCfg] = useState(() => loadSavedGithubConfig());
   const [ghTestStatus, setGhTestStatus] = useState('');
 
   const audioRef = useRef(null);
   const zipInputRef = useRef(null);
-  const solutionScrollRef = useRef(null);
-  const activeStepRef = useRef(null);
 
-  const drawingSteps = lesson?.drawingSteps || [];
-  const solutionSteps = lesson?.solutionSteps || [];
+  const drawingSteps = Array.isArray(lesson?.drawingSteps) ? lesson.drawingSteps : [];
+  const solutionSteps = Array.isArray(lesson?.solutionSteps) ? lesson.solutionSteps : [];
   const totalDrawSteps = drawingSteps.length;
   const totalSolveSteps = solutionSteps.length;
   const totalTimelineSteps = Math.max(1, totalDrawSteps + totalSolveSteps);
 
+  // Bảng mốc thời gian chuẩn hóa (dùng mốc thật nếu có âm thanh, hoặc mốc ảo đều nhau nếu chưa có âm thanh)
+  const effectiveTimeline = useMemo(() => {
+    if (Array.isArray(lesson?.audioTimeline) && lesson.audioTimeline.length > 0) {
+      return lesson.audioTimeline;
+    }
+    return Array.from({ length: totalTimelineSteps }, (_, idx) => ({
+      stepIndex: idx,
+      startSec: Number((idx * VIRTUAL_STEP_SEC).toFixed(3)),
+      endSec: Number(((idx + 1) * VIRTUAL_STEP_SEC).toFixed(3))
+    }));
+  }, [lesson, totalTimelineSteps]);
+
+  const effectiveDuration = useMemo(() => {
+    if (duration > 0) return duration;
+    const last = effectiveTimeline[effectiveTimeline.length - 1];
+    return last ? last.endSec : totalTimelineSteps * VIRTUAL_STEP_SEC;
+  }, [duration, effectiveTimeline, totalTimelineSteps]);
+
+  // Hàm đồng bộ trạng thái hình vẽ & lời giải theo mốc thời gian tSec
+  const syncVisualStateToTime = useCallback(
+    (tSec) => {
+      if (effectiveTimeline.length === 0) return;
+      const clamped = Math.max(0, tSec);
+      const hit =
+        effectiveTimeline.find((item) => clamped >= item.startSec && clamped < item.endSec) ||
+        effectiveTimeline[effectiveTimeline.length - 1];
+      if (!hit) return;
+
+      const idx = hit.stepIndex;
+      if (idx < totalDrawSteps) {
+        setMode('draw');
+        setDrawStepIdx(idx);
+        setSolveStepIdx(-1);
+        const span = Math.max(0.2, hit.endSec - hit.startSec);
+        setDrawProgress(Math.min(1, Math.max(0.08, (clamped - hit.startSec) / (span * 0.75))));
+      } else {
+        const sIdx = idx - totalDrawSteps;
+        setMode('solve');
+        setDrawStepIdx(Math.max(0, totalDrawSteps - 1));
+        setDrawProgress(1);
+        setSolveStepIdx(Math.min(totalSolveSteps - 1, Math.max(0, sIdx)));
+      }
+    },
+    [effectiveTimeline, totalDrawSteps, totalSolveSteps]
+  );
+
+  // Tải trước tệp MP3 thành Blob URL cục bộ để tua tức thì, không bao giờ bị trình duyệt reset về 0
+  const prepareBufferedAudioUrl = useCallback(async (rawUrl, isAlreadyBlob = false) => {
+    if (objectUrlToRevokeRef.current) {
+      URL.revokeObjectURL(objectUrlToRevokeRef.current);
+      objectUrlToRevokeRef.current = '';
+    }
+    if (!rawUrl) {
+      setAudioUrl('');
+      return;
+    }
+    if (isAlreadyBlob || rawUrl.startsWith('blob:')) {
+      objectUrlToRevokeRef.current = rawUrl;
+      setAudioUrl(rawUrl);
+      return;
+    }
+    try {
+      const res = await fetch(rawUrl);
+      if (!res.ok) throw new Error('Audio fetch failed');
+      const blob = await res.blob();
+      const localBlobUrl = URL.createObjectURL(blob);
+      objectUrlToRevokeRef.current = localBlobUrl;
+      setAudioUrl(localBlobUrl);
+    } catch {
+      setAudioUrl(rawUrl);
+    }
+  }, []);
+
+  const applyLoadedLesson = useCallback(
+    async (newLesson, customBlobUrl = '') => {
+      setIsPlaying(false);
+      isSeekingRef.current = false;
+      virtualTimeRef.current = 0;
+      setCurrentTime(0);
+      setDuration(0);
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+
+      setLesson(newLesson);
+      const dSteps = Array.isArray(newLesson?.drawingSteps) ? newLesson.drawingSteps : [];
+      const sSteps = Array.isArray(newLesson?.solutionSteps) ? newLesson.solutionSteps : [];
+      setMode(dSteps.length > 0 ? 'draw' : 'solve');
+      setDrawStepIdx(0);
+      setSolveStepIdx(dSteps.length === 0 && sSteps.length > 0 ? 0 : -1);
+      setDrawProgress(1);
+
+      if (customBlobUrl) {
+        await prepareBufferedAudioUrl(customBlobUrl, true);
+      } else if (newLesson?.hasStaticAudio && newLesson?.audioBasePath && newLesson?.audioFile) {
+        const remoteUrl = `${newLesson.audioBasePath}/${newLesson.audioFile}?t=${Date.now()}`;
+        await prepareBufferedAudioUrl(remoteUrl, false);
+      } else {
+        await prepareBufferedAudioUrl('', false);
+      }
+    },
+    [prepareBufferedAudioUrl]
+  );
+
+  // Nạp danh mục bài mẫu ban đầu
   useEffect(() => {
     let mounted = true;
-    fetchLessonsCatalog().then(async (list) => {
+    (async () => {
+      const remoteList = await fetchLessonsCatalog();
+      const merged = remoteList.length > 0 ? remoteList : Array.isArray(savedSamples) ? savedSamples : [];
       if (!mounted) return;
-      const merged = list.length > 0 ? list : Array.isArray(savedSamples) ? savedSamples : [];
       setCatalog(merged);
-      if (merged.length > 0 && merged[0].path) {
+      if (merged.length > 0) {
         try {
-          const firstDetail = await fetchLessonDetail(merged[0]);
-          if (mounted) {
-            applyLoadedLesson(firstDetail);
-          }
+          const first = merged[0];
+          const detail = first.path ? await fetchLessonDetail(first) : first;
+          if (mounted) await applyLoadedLesson(detail);
         } catch {
-          // Giữ bài mặc định nếu chạy offline
+          // giữ bài mặc định
         }
       }
-    });
+    })();
     return () => {
       mounted = false;
     };
-  }, []);
-
-  const applyLoadedLesson = (newLesson, customAudioBlobUrl = '') => {
-    setIsPlaying(false);
-    setAudioCurrentSec(0);
-    setAudioDurationSec(0);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-
-    setLesson(newLesson);
-    const dCount = (newLesson.drawingSteps || []).length;
-    const sCount = (newLesson.solutionSteps || []).length;
-    setMode(dCount > 0 ? 'draw' : 'solve');
-    setDrawStepIdx(0);
-    setSolveStepIdx(dCount === 0 && sCount > 0 ? 0 : -1);
-    setDrawProgress(1);
-    setShowAllSolution(false);
-
-    if (customAudioBlobUrl) {
-      setAudioUrl(customAudioBlobUrl);
-    } else if (newLesson.hasStaticAudio && newLesson.audioBasePath && newLesson.audioFile) {
-      setAudioUrl(`${newLesson.audioBasePath}/${newLesson.audioFile}?t=${Date.now()}`);
-    } else {
-      setAudioUrl('');
-    }
-  };
+  }, [applyLoadedLesson]);
 
   const handleSelectCatalogItem = async (item) => {
     setShowCatalogModal(false);
     try {
       if (item.path) {
         const detail = await fetchLessonDetail(item);
-        applyLoadedLesson(detail);
+        await applyLoadedLesson(detail);
       } else {
-        applyLoadedLesson(item);
+        await applyLoadedLesson(item);
       }
     } catch (err) {
       alert(err.message || 'Không tải được bài học.');
@@ -296,7 +380,7 @@ export default function App() {
         parsedLesson.hasStaticAudio = true;
       }
 
-      applyLoadedLesson(parsedLesson, blobUrl);
+      await applyLoadedLesson(parsedLesson, blobUrl);
     } catch (err) {
       alert(err.message || 'Không đọc được gói bài giảng .zip.');
     }
@@ -307,50 +391,40 @@ export default function App() {
     if (!audio) return;
     audio.playbackRate = playbackRate;
     audio.muted = isMuted;
-    audio.volume = volume;
-  }, [playbackRate, isMuted, volume, audioUrl]);
+  }, [playbackRate, isMuted, audioUrl]);
 
+  // Lắng nghe sự kiện từ thẻ <audio>
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
 
-    const timeline = Array.isArray(lesson?.audioTimeline) ? lesson.audioTimeline : [];
-
     const onLoadedMetadata = () => {
-      if (Number.isFinite(audio.duration)) {
-        setAudioDurationSec(audio.duration);
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
       }
     };
 
     const onTimeUpdate = () => {
+      // Bỏ qua cập nhật tự động khi người dùng đang kéo/bấm tua thanh trượt
+      if (isSeekingRef.current) return;
       const t = audio.currentTime;
-      setAudioCurrentSec(t);
-      if (Number.isFinite(audio.duration) && audio.duration > 0) {
-        setAudioDurationSec(audio.duration);
-      }
+      setCurrentTime(t);
+      syncVisualStateToTime(t);
+    };
 
-      if (timeline.length === 0) return;
-      const hit =
-        timeline.find((item) => t >= item.startSec && t < item.endSec) ||
-        timeline[timeline.length - 1];
-      if (!hit) return;
-
-      const idx = hit.stepIndex;
-      if (idx < totalDrawSteps) {
-        setMode('draw');
-        setDrawStepIdx(idx);
-        const span = Math.max(0.2, hit.endSec - hit.startSec);
-        setDrawProgress(Math.min(1, Math.max(0.1, (t - hit.startSec) / (span * 0.75))));
-      } else {
-        const sIdx = idx - totalDrawSteps;
-        setMode('solve');
-        setDrawStepIdx(Math.max(0, totalDrawSteps - 1));
-        setDrawProgress(1);
-        setSolveStepIdx(Math.min(totalSolveSteps - 1, Math.max(0, sIdx)));
+    const onSeeked = () => {
+      if (seekTimeoutRef.current) {
+        clearTimeout(seekTimeoutRef.current);
+        seekTimeoutRef.current = null;
       }
+      isSeekingRef.current = false;
+      const t = audio.currentTime;
+      setCurrentTime(t);
+      syncVisualStateToTime(t);
     };
 
     const onEnded = () => {
+      isSeekingRef.current = false;
       setIsPlaying(false);
       setMode('solve');
       setDrawProgress(1);
@@ -358,91 +432,113 @@ export default function App() {
     };
 
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('durationchange', onLoadedMetadata);
     audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('seeked', onSeeked);
     audio.addEventListener('ended', onEnded);
+
     return () => {
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('durationchange', onLoadedMetadata);
       audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('seeked', onSeeked);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [audioUrl, lesson, totalDrawSteps, totalSolveSteps]);
+  }, [audioUrl, syncVisualStateToTime, totalSolveSteps]);
 
+  // Bộ đếm chạy tự động khi bài chưa có file âm thanh MP3 (hỗ trợ tua mượt không nhảy về 0)
   useEffect(() => {
     if (!isPlaying || audioUrl) return;
 
-    const intervalMs = 60;
-    const stepDurationMs = 2600 / playbackRate;
-    let elapsed = 0;
-
+    const intervalMs = 50;
     const timer = setInterval(() => {
-      elapsed += intervalMs;
-      if (mode === 'draw') {
-        const prog = Math.min(1, elapsed / (stepDurationMs * 0.7));
-        setDrawProgress(prog);
-        if (elapsed >= stepDurationMs) {
-          elapsed = 0;
-          if (drawStepIdx + 1 < totalDrawSteps) {
-            setDrawStepIdx((i) => i + 1);
-            setDrawProgress(0.05);
-          } else if (totalSolveSteps > 0) {
-            setMode('solve');
-            setSolveStepIdx(0);
-            setDrawProgress(1);
-          } else {
-            setIsPlaying(false);
-          }
-        }
+      if (isSeekingRef.current) return;
+      const nextTime = virtualTimeRef.current + (intervalMs / 1000) * playbackRate;
+      if (nextTime >= effectiveDuration) {
+        virtualTimeRef.current = effectiveDuration;
+        setCurrentTime(effectiveDuration);
+        syncVisualStateToTime(effectiveDuration);
+        setIsPlaying(false);
       } else {
-        if (elapsed >= stepDurationMs) {
-          elapsed = 0;
-          if (solveStepIdx + 1 < totalSolveSteps) {
-            setSolveStepIdx((i) => i + 1);
-          } else {
-            setIsPlaying(false);
-          }
-        }
+        virtualTimeRef.current = nextTime;
+        setCurrentTime(nextTime);
+        syncVisualStateToTime(nextTime);
       }
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [isPlaying, audioUrl, mode, drawStepIdx, solveStepIdx, totalDrawSteps, totalSolveSteps, playbackRate]);
+  }, [isPlaying, audioUrl, playbackRate, effectiveDuration, syncVisualStateToTime]);
 
-  // Tự động cuộn khung Lời giải theo bước đang thuyết minh
-  useEffect(() => {
-    if (mode !== 'solve' || solveStepIdx < 0) return;
-    const container = solutionScrollRef.current;
-    const activeEl = activeStepRef.current;
-    if (!container) return;
-
-    if (showAllSolution && activeEl) {
-      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } else {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth'
-      });
+  // Xử lý kéo / bấm tua trên thanh timeline
+  const handleScrubStart = () => {
+    isSeekingRef.current = true;
+    if (seekTimeoutRef.current) {
+      clearTimeout(seekTimeoutRef.current);
+      seekTimeoutRef.current = null;
     }
-  }, [mode, solveStepIdx, showAllSolution]);
+  };
 
-  const jumpToGlobalStep = (globalIdx) => {
-    const clamped = Math.max(0, Math.min(totalTimelineSteps - 1, globalIdx));
-    if (clamped < totalDrawSteps) {
-      setMode('draw');
-      setDrawStepIdx(clamped);
-      setSolveStepIdx(-1);
-      setDrawProgress(1);
+  const handleScrubChange = (e) => {
+    const newTime = Math.max(0, Math.min(effectiveDuration, Number(e.target.value) || 0));
+    isSeekingRef.current = true;
+    setCurrentTime(newTime);
+    virtualTimeRef.current = newTime;
+    syncVisualStateToTime(newTime);
+  };
+
+  const handleScrubCommit = (e) => {
+    const targetTime = Math.max(0, Math.min(effectiveDuration, Number(e?.target?.value ?? currentTime) || 0));
+    setCurrentTime(targetTime);
+    virtualTimeRef.current = targetTime;
+    syncVisualStateToTime(targetTime);
+
+    const audio = audioRef.current;
+    if (audio && audioUrl) {
+      try {
+        // Đảm bảo đặt currentTime sau khi metadata sẵn sàng
+        if (audio.readyState >= 1) {
+          audio.currentTime = targetTime;
+        } else {
+          audio.addEventListener(
+            'loadedmetadata',
+            () => {
+              audio.currentTime = targetTime;
+            },
+            { once: true }
+          );
+        }
+      } catch {
+        // ignore
+      }
+      seekTimeoutRef.current = setTimeout(() => {
+        isSeekingRef.current = false;
+      }, 250);
     } else {
-      setMode('solve');
-      setDrawStepIdx(Math.max(0, totalDrawSteps - 1));
-      setDrawProgress(1);
-      setSolveStepIdx(clamped - totalDrawSteps);
+      isSeekingRef.current = false;
     }
+  };
 
-    const timeline = Array.isArray(lesson?.audioTimeline) ? lesson.audioTimeline : [];
-    const entry = timeline.find((item) => item.stepIndex === clamped);
-    if (audioRef.current && audioUrl && entry) {
-      audioRef.current.currentTime = entry.startSec;
-      setAudioCurrentSec(entry.startSec);
+  const seekToTimelineStep = (globalStepIdx) => {
+    const entry = effectiveTimeline.find((item) => item.stepIndex === globalStepIdx);
+    const targetSec = entry ? entry.startSec : globalStepIdx * VIRTUAL_STEP_SEC;
+
+    isSeekingRef.current = true;
+    setCurrentTime(targetSec);
+    virtualTimeRef.current = targetSec;
+    syncVisualStateToTime(targetSec);
+
+    const audio = audioRef.current;
+    if (audio && audioUrl) {
+      try {
+        audio.currentTime = targetSec;
+      } catch {
+        // ignore
+      }
+      seekTimeoutRef.current = setTimeout(() => {
+        isSeekingRef.current = false;
+      }, 250);
+    } else {
+      isSeekingRef.current = false;
     }
   };
 
@@ -453,6 +549,11 @@ export default function App() {
       return;
     }
 
+    // Nếu đã chạy hết bài thì phát lại từ đầu
+    if (currentTime >= effectiveDuration - 0.15) {
+      seekToTimelineStep(0);
+    }
+
     setIsPlaying(true);
     if (audioRef.current && audioUrl) {
       audioRef.current.play().catch(() => {});
@@ -461,7 +562,9 @@ export default function App() {
 
   const handleReset = () => {
     setIsPlaying(false);
-    setAudioCurrentSec(0);
+    isSeekingRef.current = false;
+    virtualTimeRef.current = 0;
+    setCurrentTime(0);
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -475,54 +578,32 @@ export default function App() {
   const currentGlobalStep =
     mode === 'draw' ? drawStepIdx : totalDrawSteps + Math.max(0, solveStepIdx);
 
-  const handlePrevStep = () => jumpToGlobalStep(currentGlobalStep - 1);
-  const handleNextStep = () => jumpToGlobalStep(currentGlobalStep + 1);
-
-  const handleProgressBarClick = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
-
-    if (audioRef.current && audioUrl && audioDurationSec > 0) {
-      const targetSec = ratio * audioDurationSec;
-      audioRef.current.currentTime = targetSec;
-      setAudioCurrentSec(targetSec);
-      return;
-    }
-
-    const targetStep = Math.min(totalTimelineSteps - 1, Math.floor(ratio * totalTimelineSteps));
-    jumpToGlobalStep(targetStep);
+  const handlePrevStep = () => {
+    const prev = Math.max(0, currentGlobalStep - 1);
+    seekToTimelineStep(prev);
   };
 
-  const handleExportVideo = async () => {
-    if (isExportingVideo) {
-      videoAbortRef.current?.abort();
-      return;
-    }
+  const handleNextStep = () => {
+    const next = Math.min(totalTimelineSteps - 1, currentGlobalStep + 1);
+    seekToTimelineStep(next);
+  };
 
-    if (isPlaying) {
-      setIsPlaying(false);
-      if (audioRef.current) audioRef.current.pause();
-    }
+  const handleExportMp4 = async () => {
+    if (exportState) return;
+    setIsPlaying(false);
+    if (audioRef.current) audioRef.current.pause();
 
-    const controller = new AbortController();
-    videoAbortRef.current = controller;
-    setIsExportingVideo(true);
-    setVideoProgressPct(0);
-
+    setExportState({ percent: 1, label: 'Đang khởi tạo trình xuất video MP4...' });
     try {
-      await exportLectureVideo({
+      await exportLessonToMp4({
         lesson,
         audioUrl,
-        onProgress: setVideoProgressPct,
-        signal: controller.signal
+        onProgress: (info) => setExportState(info)
       });
     } catch (err) {
-      if (err.message !== 'ABORTED') {
-        alert(err.message || 'Không xuất được video bài giảng.');
-      }
+      alert(err.message || 'Có lỗi xảy ra khi xuất video .mp4.');
     } finally {
-      setIsExportingVideo(false);
-      setVideoProgressPct(0);
+      setTimeout(() => setExportState(null), 900);
     }
   };
 
@@ -531,59 +612,41 @@ export default function App() {
       ? drawingSteps[drawStepIdx] || null
       : solutionSteps[solveStepIdx] || null;
 
-  const activeSubtitleText = useMemo(() => {
-    if (mode === 'draw') {
-      const st = drawingSteps[drawStepIdx];
-      return st?.voiceExplanation || st?.caption || 'Đang dựng hình theo yêu cầu đề bài...';
-    }
-    const st = solutionSteps[solveStepIdx];
-    return st?.voiceExplanation || st?.lineText || 'Bấm "Tự động giảng" để bắt đầu bài giảng.';
-  }, [mode, drawStepIdx, solveStepIdx, drawingSteps, solutionSteps]);
-
   const visibleSolutionSteps = useMemo(() => {
     if (showAllSolution) return solutionSteps;
     if (mode === 'draw') return [];
     return solutionSteps.slice(0, Math.max(0, solveStepIdx + 1));
   }, [solutionSteps, showAllSolution, mode, solveStepIdx]);
 
-  const progressPercent = useMemo(() => {
-    if (audioUrl && audioDurationSec > 0) {
-      return Math.min(100, Math.max(0, (audioCurrentSec / audioDurationSec) * 100));
-    }
-    const subProg = mode === 'draw' ? drawProgress : 1;
-    return Math.min(100, Math.max(0, ((currentGlobalStep + subProg) / totalTimelineSteps) * 100));
-  }, [audioUrl, audioDurationSec, audioCurrentSec, mode, drawProgress, currentGlobalStep, totalTimelineSteps]);
+  const progressPercent =
+    effectiveDuration > 0 ? Math.min(100, Math.max(0, (currentTime / effectiveDuration) * 100)) : 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0b1120] text-slate-100 lg:h-screen lg:overflow-hidden">
+    <div className="flex min-h-screen flex-col bg-[#0b1120] text-slate-100">
       {audioUrl && <audio ref={audioRef} src={audioUrl} preload="auto" />}
 
-      {/* Header gọn trên cùng */}
-      <header className="shrink-0 border-b border-slate-800/90 bg-[#0f172a] px-3 py-2 sm:px-4">
-        <div className="mx-auto flex max-w-[1680px] flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 font-bold text-slate-950 shadow">
+      {/* HEADER */}
+      <header className="sticky top-0 z-30 border-b border-slate-800/90 bg-[#0f172a]/95 px-4 py-2.5 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 font-bold text-slate-950 shadow-md">
               △
             </div>
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-sm font-bold tracking-tight text-white sm:text-[15px]">
-                  Giải & Vẽ Hình Toán Hình Học THCS
-                </h1>
-                <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-400">
-                  {lesson.grade}
-                </span>
-                <span className="hidden text-xs text-slate-400 md:inline">• {lesson.topic}</span>
-              </div>
-              <p className="text-[11px] font-medium text-slate-300 line-clamp-1">{lesson.title}</p>
+              <h1 className="text-sm font-bold tracking-tight text-white sm:text-base">
+                Giải & Vẽ Hình Toán Hình Học THCS
+              </h1>
+              <p className="text-[11px] text-slate-400">
+                Dựng hình từng bước • Công thức KaTeX sắc nét • Lời giảng giọng nữ miền Bắc đồng bộ
+              </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setShowCatalogModal(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs font-medium text-slate-100 transition hover:border-emerald-500/50 hover:bg-slate-800"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/90 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:border-emerald-500/50 hover:bg-slate-800"
             >
               <BookOpen className="h-3.5 w-3.5 text-emerald-400" />
               <span>Bài mẫu ({catalog.length})</span>
@@ -592,7 +655,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => zipInputRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800/90 px-2.5 py-1.5 text-xs font-medium text-slate-100 transition hover:border-sky-500/50 hover:bg-slate-800"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/90 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:border-sky-500/50 hover:bg-slate-800"
             >
               <FolderArchive className="h-3.5 w-3.5 text-sky-400" />
               <span>Tải gói bài (.zip)</span>
@@ -608,7 +671,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setShowStudioDrawer(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500"
             >
               <Sparkles className="h-3.5 w-3.5" />
               <span>Soạn bài / AI</span>
@@ -618,7 +681,7 @@ export default function App() {
               type="button"
               onClick={() => setShowSettingsModal(true)}
               title="Cài đặt API Key & GitHub"
-              className="rounded-lg border border-slate-700 bg-slate-800/90 p-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white"
+              className="rounded-xl border border-slate-700 bg-slate-800/90 p-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white"
             >
               <Settings className="h-4 w-4" />
             </button>
@@ -626,145 +689,126 @@ export default function App() {
         </div>
       </header>
 
-      {/* Khung chính 2 hàng x 2 cột:
-          Hàng 1: [ Đề bài ] | [ GT - KL ]
-          Hàng 2: [ Hình vẽ ] | [ Lời giải ] */}
-      <main className="mx-auto flex w-full max-w-[1680px] flex-1 flex-col gap-2.5 p-2.5 sm:px-4 lg:min-h-0">
-        {/* HÀNG 1: ĐỀ BÀI | GT - KL */}
-        <div className="grid shrink-0 grid-cols-1 gap-2.5 lg:h-[148px] xl:h-[160px] lg:grid-cols-2">
-          {/* Ô 1: Đề bài */}
-          <section className="flex min-h-[100px] flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#0f172a] shadow">
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-800/90 bg-slate-900/70 px-3 py-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-sky-400">
-                <FileText className="h-3.5 w-3.5" />
-                <span>Đề bài</span>
-              </div>
-              <span className="text-[11px] font-medium text-slate-400 line-clamp-1">
-                {lesson.title}
+      {/* NỘI DUNG CHÍNH */}
+      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-3.5 p-4">
+        {/* Thanh tiêu đề bài học */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800/90 bg-[#0f172a]/90 px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="rounded-lg bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+              {lesson.grade} • {lesson.topic}
+            </span>
+            <h2 className="text-sm font-bold text-white sm:text-base">{lesson.title}</h2>
+          </div>
+          <span className="text-xs text-slate-400">
+            {mode === 'draw'
+              ? `Giai đoạn 1: Vẽ hình (${drawStepIdx + 1}/${Math.max(1, totalDrawSteps)})`
+              : `Giai đoạn 2: Lời giải (${Math.max(1, solveStepIdx + 1)}/${Math.max(1, totalSolveSteps)})`}
+          </span>
+        </div>
+
+        {/* HÀNG 1: ĐỀ BÀI & GT - KL */}
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-12">
+          <section className="rounded-2xl border border-slate-800 bg-[#0f172a]/90 p-4 lg:col-span-6">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="rounded-md bg-sky-500/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-sky-300">
+                Đề bài
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto px-3 py-2 text-xs leading-relaxed text-slate-200 sm:text-[13px]">
-              <MathText text={lesson.problemText} blockEquations={false} />
-            </div>
+            <MathText text={lesson.problemText} className="text-sm leading-relaxed text-slate-100" />
           </section>
 
-          {/* Ô 2: GT - KL */}
-          <section className="flex min-h-[100px] flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#0f172a] shadow">
-            <div className="flex shrink-0 items-center gap-1.5 border-b border-slate-800/90 bg-slate-900/70 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-emerald-400">
-              <Scale className="h-3.5 w-3.5" />
-              <span>GT - KL</span>
+          <section className="rounded-2xl border border-slate-800 bg-[#0f172a]/90 p-4 lg:col-span-6">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                GT - KL
+              </span>
             </div>
-            <div className="grid flex-1 grid-cols-1 gap-2 overflow-y-auto px-3 py-2 text-xs sm:grid-cols-2">
-              <div className="border-b border-slate-800/70 pb-1.5 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-2.5">
-                <div className="font-bold text-sky-400">Giả thiết (GT):</div>
-                <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-slate-200">
-                  {(lesson.given || []).map((g, idx) => (
-                    <li key={idx}>
-                      <MathText text={g} blockEquations={false} />
-                    </li>
-                  ))}
-                </ul>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:divide-x sm:divide-slate-800">
+              <div className="space-y-1">
+                <div className="text-xs font-bold text-sky-400">GT</div>
+                {(lesson.given || []).map((item, i) => (
+                  <MathText key={i} text={`• ${item}`} className="text-xs leading-relaxed text-slate-200 sm:text-sm" />
+                ))}
               </div>
-              <div className="sm:pl-1">
-                <div className="font-bold text-emerald-400">Kết luận (KL):</div>
-                <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-slate-200">
-                  {(lesson.prove || []).map((p, idx) => (
-                    <li key={idx}>
-                      <MathText text={p} blockEquations={false} />
-                    </li>
-                  ))}
-                </ul>
+              <div className="space-y-1 sm:pl-3">
+                <div className="text-xs font-bold text-emerald-400">KL</div>
+                {(lesson.prove || []).map((item, i) => (
+                  <MathText key={i} text={`• ${item}`} className="text-xs leading-relaxed text-emerald-200 sm:text-sm" />
+                ))}
               </div>
             </div>
           </section>
         </div>
 
-        {/* HÀNG 2: HÌNH VẼ | LỜI GIẢI */}
-        <div className="grid min-h-[360px] flex-1 grid-cols-1 gap-2.5 lg:min-h-0 lg:grid-cols-2">
-          {/* Ô 3: Hình vẽ (luôn hiển thị cố định trọn vẹn hình) */}
-          <section className="flex min-h-[300px] flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#0f172a] shadow lg:min-h-0">
-            <GeometryCanvas
-              geometry={lesson.geometry}
-              mode={mode}
-              activeDrawStep={drawStepIdx}
-              activeSolveStep={solveStepIdx}
-              activeStepConfig={activeStepConfig}
-              drawProgress={drawProgress}
-            />
+        {/* HÀNG 2: HÌNH VẼ & LỜI GIẢI CHI TIẾT */}
+        <div className="grid flex-1 grid-cols-1 gap-3.5 lg:grid-cols-12">
+          {/* CỘT TRÁI: HÌNH VẼ */}
+          <section className="flex flex-col rounded-2xl border border-slate-800 bg-[#0f172a]/90 p-3.5 lg:col-span-6">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="rounded-md bg-sky-500/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-sky-300">
+                Hình vẽ minh họa
+              </span>
+              {activeStepConfig?.caption && mode === 'draw' && (
+                <span className="truncate pl-3 text-xs text-sky-200">{activeStepConfig.caption}</span>
+              )}
+            </div>
+            <div className="min-h-[380px] flex-1">
+              <GeometryCanvas
+                geometry={lesson.geometry}
+                mode={mode}
+                activeDrawStep={drawStepIdx}
+                activeSolveStep={solveStepIdx}
+                activeStepConfig={activeStepConfig}
+                drawProgress={drawProgress}
+              />
+            </div>
           </section>
 
-          {/* Ô 4: Lời giải (gọn giãn dòng, bỏ đánh số đầu dòng, công thức dài xuống dòng riêng, tự động cuộn) */}
-          <section className="flex min-h-[300px] flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#0f172a] shadow lg:min-h-0">
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-800/90 bg-slate-900/70 px-3 py-1.5">
-              <div className="flex items-center gap-1.5">
-                <ListChecks className="h-3.5 w-3.5 text-emerald-400" />
-                <h2 className="text-xs font-bold uppercase tracking-wide text-white">
+          {/* CỘT PHẢI: LỜI GIẢI CHI TIẾT */}
+          <section className="flex flex-col rounded-2xl border border-slate-800 bg-[#0f172a]/90 p-3.5 lg:col-span-6">
+            <div className="mb-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-emerald-300">
                   Lời giải chi tiết
-                </h2>
+                </span>
+                <span className="text-xs text-slate-400">
+                  ({visibleSolutionSteps.length}/{totalSolveSteps} dòng)
+                </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-medium text-slate-400">
-                  {showAllSolution
-                    ? `${totalSolveSteps} / ${totalSolveSteps}`
-                    : `${mode === 'solve' ? Math.max(0, solveStepIdx + 1) : 0} / ${totalSolveSteps}`}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextShowAll = !showAllSolution;
-                    setShowAllSolution(nextShowAll);
-                    if (nextShowAll) {
-                      setMode('solve');
-                      setDrawProgress(1);
-                      if (totalSolveSteps > 0 && solveStepIdx < 0) {
-                        setSolveStepIdx(totalSolveSteps - 1);
-                      }
-                    }
-                  }}
-                  className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-200 transition hover:bg-slate-700"
-                >
-                  <Eye className="h-3 w-3 text-emerald-400" />
-                  <span>{showAllSolution ? 'Theo từng bước' : 'Hiện tất cả'}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllSolution((v) => !v)}
+                className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-slate-200 hover:border-emerald-500/40 hover:text-white"
+              >
+                {showAllSolution ? <ListChecks className="h-3.5 w-3.5 text-emerald-400" /> : <Eye className="h-3.5 w-3.5 text-sky-400" />}
+                <span>{showAllSolution ? 'Theo từng bước' : 'Hiện toàn bộ'}</span>
+              </button>
             </div>
 
-            <div
-              ref={solutionScrollRef}
-              className="flex-1 space-y-1 overflow-y-auto px-3 py-2"
-            >
+            <div className="flex-1 space-y-2 overflow-y-auto pr-1" style={{ maxHeight: '460px' }}>
               {visibleSolutionSteps.length === 0 ? (
-                <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 p-4 text-center">
-                  <p className="text-xs font-medium text-slate-300">
-                    Đang ở giai đoạn dựng hình từng bước
-                  </p>
-                  <p className="mt-1 max-w-md text-[11px] text-slate-400">
-                    Bấm "Tự động giảng" để xem dựng hình và lời giải xuất hiện đồng bộ, hoặc bấm "Hiện tất cả" để xem ngay toàn bộ lời giải.
-                  </p>
+                <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-800 text-xs italic text-slate-500">
+                  Đang dựng hình từng bước theo giả thiết...
                 </div>
               ) : (
-                visibleSolutionSteps.map((step, idx) => {
-                  const isActive = mode === 'solve' && solveStepIdx === idx;
+                visibleSolutionSteps.map((st, idx) => {
+                  const isActive = mode === 'solve' && idx === solveStepIdx;
                   return (
                     <div
                       key={idx}
-                      ref={isActive ? activeStepRef : null}
-                      onClick={() => {
-                        setMode('solve');
-                        setDrawProgress(1);
-                        setSolveStepIdx(idx);
-                        jumpToGlobalStep(totalDrawSteps + idx);
-                      }}
-                      className={`cursor-pointer rounded-lg border px-2.5 py-1.5 transition ${
+                      onClick={() => seekToTimelineStep(totalDrawSteps + idx)}
+                      title="Bấm để nhảy tới bước giải này"
+                      className={`cursor-pointer rounded-xl border px-3.5 py-2.5 transition ${
                         isActive
-                          ? 'border-emerald-500/70 bg-emerald-950/35 text-white shadow-sm'
-                          : 'border-transparent bg-slate-900/50 text-slate-200 hover:border-slate-700/80 hover:bg-slate-900'
+                          ? 'border-emerald-500/60 bg-emerald-950/35 shadow-sm'
+                          : 'border-slate-800/90 bg-slate-900/60 hover:border-slate-700'
                       }`}
                     >
-                      <div className="min-w-0 text-xs sm:text-[13px]">
-                        <MathText text={step.lineText} blockEquations={true} />
-                      </div>
+                      <MathText
+                        text={st.lineText}
+                        className="math-eq-line text-sm leading-relaxed text-slate-100"
+                      />
                     </div>
                   );
                 })
@@ -772,184 +816,175 @@ export default function App() {
             </div>
           </section>
         </div>
-      </main>
 
-      {/* Cụm điều khiển cố định phía dưới gồm 3 phần theo đúng bố cục yêu cầu:
-          1. Lời thuyết minh
-          2. Thanh tiến trình
-          3. Nút "Tự động giảng", Tốc độ, loa, ... Nút "Tải video" */}
-      <footer className="shrink-0 border-t border-slate-800 bg-[#0f172a] px-3 py-2 sm:px-4">
-        <div className="mx-auto flex max-w-[1680px] flex-col gap-1.5">
-          {/* 1. Lời thuyết minh */}
-          <div className="flex items-center gap-2 rounded-lg border border-slate-800/90 bg-slate-950/75 px-3 py-1.5">
-            <MessageSquareQuote className="h-4 w-4 shrink-0 text-sky-400" />
-            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-sky-400">
-              Lời thuyết minh:
-            </span>
-            <p className="min-w-0 flex-1 truncate text-xs text-slate-100" title={activeSubtitleText}>
-              {activeSubtitleText}
-            </p>
-          </div>
-
-          {/* 2. Thanh tiến trình */}
-          <div className="flex items-center gap-3">
-            <span className="shrink-0 font-mono text-[11px] text-slate-400">
-              {audioUrl && audioDurationSec > 0
-                ? formatTimeMMSS(audioCurrentSec)
-                : `Bước ${currentGlobalStep + 1}`}
-            </span>
-
-            <div
-              onClick={handleProgressBarClick}
-              title="Bấm để tua nhanh đến vị trí bài giảng"
-              className="group relative h-2.5 flex-1 cursor-pointer overflow-hidden rounded-full bg-slate-800"
-            >
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 transition-all duration-150"
-                style={{ width: `${progressPercent}%` }}
-              />
-              {/* Các vạch chia mốc từng bước */}
-              {Array.from({ length: Math.max(0, totalTimelineSteps - 1) }).map((_, i) => {
-                const leftPct = ((i + 1) / totalTimelineSteps) * 100;
-                return (
-                  <span
-                    key={i}
-                    style={{ left: `${leftPct}%` }}
-                    className="pointer-events-none absolute top-0 h-full w-[1.5px] bg-slate-950/80"
-                  />
-                );
-              })}
+        {/* HỘP LỜI THUYẾT MINH */}
+        <section className="rounded-2xl border border-slate-800 bg-[#0f172a]/95 px-4 py-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-emerald-400" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+                Lời thuyết minh
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowNarrationBox((v) => !v)}
+              className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+            >
+              {showNarrationBox ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+            </button>
+          </div>
+          {showNarrationBox && (
+            <p className="mt-1 text-xs leading-relaxed text-slate-200 sm:text-sm">
+              {activeStepConfig?.voiceExplanation ||
+                activeStepConfig?.caption ||
+                'Bấm "Tự động giảng" để nghe cô giáo giảng từng bước dựng hình và chứng minh.'}
+            </p>
+          )}
+        </section>
 
-            <span className="shrink-0 font-mono text-[11px] text-slate-400">
-              {audioUrl && audioDurationSec > 0
-                ? formatTimeMMSS(audioDurationSec)
-                : `${totalTimelineSteps} bước`}
+        {/* THANH TUA THỜI GIAN & ĐIỀU KHIỂN TRÌNH CHIẾU */}
+        <footer className="rounded-2xl border border-slate-800 bg-[#0f172a] px-4 py-3 shadow-lg">
+          {/* Thanh trượt thời gian mượt mà (không bao giờ nhảy về đầu khi bấm/kéo tua) */}
+          <div className="mb-3 flex items-center gap-3">
+            <span className="w-11 text-right font-mono text-xs text-slate-300">
+              {formatTimeSec(currentTime)}
+            </span>
+            <div className="relative flex flex-1 items-center">
+              <input
+                type="range"
+                min={0}
+                max={effectiveDuration || 1}
+                step={0.05}
+                value={Math.min(currentTime, effectiveDuration || 1)}
+                onPointerDown={handleScrubStart}
+                onMouseDown={handleScrubStart}
+                onTouchStart={handleScrubStart}
+                onChange={handleScrubChange}
+                onPointerUp={handleScrubCommit}
+                onMouseUp={handleScrubCommit}
+                onTouchEnd={handleScrubCommit}
+                aria-label="Thanh tua tiến trình bài giảng"
+                className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-800 accent-emerald-400"
+                style={{
+                  background: `linear-gradient(to right, #34d399 0%, #34d399 ${progressPercent}%, #1e293b ${progressPercent}%, #1e293b 100%)`
+                }}
+              />
+            </div>
+            <span className="w-11 font-mono text-xs text-slate-400">
+              {formatTimeSec(effectiveDuration)}
             </span>
           </div>
 
-          {/* 3. Hàng nút điều khiển: Tự động giảng, Tốc độ, Loa, ... Nút Tải video */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
-            {/* Cụm điều hướng từng bước */}
-            <div className="flex items-center gap-1.5">
+          {/* Hàng nút bấm điều khiển */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleReset}
-                className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700"
+                className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>Vẽ lại</span>
               </button>
 
-              <button
-                type="button"
-                onClick={handlePrevStep}
-                disabled={currentGlobalStep <= 0}
-                title="Bước trước"
-                className="rounded-lg border border-slate-700 bg-slate-800 p-1.5 text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              <span className="px-1 text-xs font-semibold text-slate-300">
-                Bước {currentGlobalStep + 1}/{totalTimelineSteps}
-              </span>
-
-              <button
-                type="button"
-                onClick={handleNextStep}
-                disabled={currentGlobalStep >= totalTimelineSteps - 1}
-                title="Bước tiếp theo"
-                className="rounded-lg border border-slate-700 bg-slate-800 p-1.5 text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Cụm nút trung tâm: Tự động giảng, Tốc độ, Loa */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleTogglePlay}
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow transition hover:bg-emerald-500"
-              >
-                {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                <span>{isPlaying ? 'Tạm dừng' : 'Tự động giảng'}</span>
-              </button>
-
-              <div className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200">
-                <span className="text-[11px] text-slate-400">Tốc độ:</span>
-                <select
-                  value={playbackRate}
-                  onChange={(e) => setPlaybackRate(Number(e.target.value))}
-                  className="bg-transparent font-semibold text-white focus:outline-none"
-                >
-                  <option value={0.75} className="bg-slate-900">0.75x</option>
-                  <option value={1} className="bg-slate-900">1x</option>
-                  <option value={1.25} className="bg-slate-900">1.25x</option>
-                  <option value={1.5} className="bg-slate-900">1.5x</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1">
+              <div className="flex items-center rounded-xl border border-slate-700 bg-slate-800/80 px-1 py-0.5">
                 <button
                   type="button"
-                  onClick={() => setIsMuted((m) => !m)}
-                  title={isMuted ? 'Bật loa' : 'Tắt loa'}
-                  className="text-slate-200 hover:text-white"
+                  onClick={handlePrevStep}
+                  disabled={currentGlobalStep <= 0}
+                  className="rounded-lg p-1 text-slate-300 hover:bg-slate-700 disabled:opacity-40"
                 >
-                  {isMuted || volume === 0 ? (
-                    <VolumeX className="h-4 w-4 text-rose-400" />
-                  ) : (
-                    <Volume2 className="h-4 w-4 text-emerald-400" />
-                  )}
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={isMuted ? 0 : volume}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    setVolume(v);
-                    if (v > 0 && isMuted) setIsMuted(false);
-                  }}
-                  title="Âm lượng loa"
-                  className="h-1.5 w-16 cursor-pointer accent-emerald-400"
-                />
+                <span className="px-2.5 text-xs font-semibold text-slate-200">
+                  Bước {currentGlobalStep + 1}/{totalTimelineSteps}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  disabled={currentGlobalStep >= totalTimelineSteps - 1}
+                  className="rounded-lg p-1 text-slate-300 hover:bg-slate-700 disabled:opacity-40"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
-            {/* Cụm bên phải: Nút Tải video */}
+            <button
+              type="button"
+              onClick={handleTogglePlay}
+              className="flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2 text-xs font-bold text-slate-950 shadow-md shadow-emerald-950/50 transition hover:bg-emerald-400 sm:text-sm"
+            >
+              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              <span>{isPlaying ? 'Tạm dừng' : 'Tự động giảng'}</span>
+            </button>
+
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={handleExportVideo}
-                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold shadow transition ${
-                  isExportingVideo
-                    ? 'border border-amber-500/60 bg-amber-950/60 text-amber-200 hover:bg-amber-900/60'
-                    : 'border border-sky-500/50 bg-sky-600/20 text-sky-200 hover:bg-sky-600/35 hover:text-white'
-                }`}
+                onClick={() =>
+                  setPlaybackRate((r) => (r === 1 ? 1.25 : r === 1.25 ? 1.5 : r === 1.5 ? 0.75 : 1))
+                }
+                className="rounded-xl border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700"
               >
-                <Video className="h-3.5 w-3.5 text-sky-400" />
-                <span>
-                  {isExportingVideo
-                    ? `Đang xuất video (${videoProgressPct}%) • Bấm để hủy`
-                    : 'Tải video'}
-                </span>
+                Tốc độ: {playbackRate}x
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsMuted((m) => !m)}
+                className="rounded-xl border border-slate-700 bg-slate-800 p-1.5 text-slate-200 hover:bg-slate-700"
+              >
+                {isMuted ? <VolumeX className="h-4 w-4 text-rose-400" /> : <Volume2 className="h-4 w-4 text-emerald-400" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportMp4}
+                disabled={Boolean(exportState)}
+                className="flex items-center gap-1.5 rounded-xl bg-sky-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-sky-500 disabled:opacity-60"
+              >
+                {exportState ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Video className="h-3.5 w-3.5" />
+                )}
+                <span>Tải video (.mp4)</span>
               </button>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </main>
 
-      {/* Modal danh sách bài mẫu */}
+      {/* MODAL TIẾN TRÌNH XUẤT VIDEO MP4 */}
+      {exportState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0f172a] p-5 shadow-2xl">
+            <div className="mb-3 flex items-center gap-2.5">
+              <Loader2 className="h-5 w-5 animate-spin text-sky-400" />
+              <h3 className="text-sm font-bold text-white">Đang xuất video bài giảng (.mp4)</h3>
+            </div>
+            <p className="mb-3 text-xs text-slate-300">{exportState.label}</p>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 transition-all duration-200"
+                style={{ width: `${exportState.percent || 5}%` }}
+              />
+            </div>
+            <div className="mt-2 text-right font-mono text-xs text-sky-300">
+              {exportState.percent || 0}%
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DANH SÁCH BÀI MẪU */}
       {showCatalogModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0f172a] shadow-2xl">
+          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl border border-slate-700 bg-[#0f172a] shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3.5">
-              <h3 className="text-sm font-bold text-white">Kho Bài Giảng Mẫu THCS</h3>
+              <h3 className="text-sm font-bold text-white">Danh sách bài giảng mẫu</h3>
               <button
                 type="button"
                 onClick={() => setShowCatalogModal(false)}
@@ -958,30 +993,27 @@ export default function App() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="space-y-2 overflow-y-auto p-4">
+            <div className="flex-1 space-y-2 overflow-y-auto p-4">
               {catalog.length === 0 ? (
-                <p className="text-xs text-slate-400">
-                  Chưa tải được danh sách từ /lessons/index.json. Thầy có thể bấm "Tải gói bài (.zip)" hoặc dùng bài mặc định hiện tại.
+                <p className="py-8 text-center text-xs text-slate-400">
+                  Chưa có bài mẫu trong thư mục public/lessons/. Thầy có thể dùng "Tải gói bài (.zip)" hoặc "Soạn bài / AI".
                 </p>
               ) : (
-                catalog.map((item) => (
+                catalog.map((item, idx) => (
                   <button
-                    key={item.id}
+                    key={item.id || idx}
                     type="button"
                     onClick={() => handleSelectCatalogItem(item)}
-                    className="flex w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/80 p-3.5 text-left transition hover:border-emerald-500/50 hover:bg-slate-900"
+                    className="flex w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-left transition hover:border-emerald-500/50 hover:bg-slate-800"
                   >
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-400">
-                          {item.grade}
-                        </span>
-                        <span className="text-xs text-slate-400">{item.topic}</span>
+                      <div className="text-[11px] font-semibold text-emerald-400">
+                        {item.grade} • {item.topic}
                       </div>
-                      <div className="mt-1 text-sm font-semibold text-white">{item.title}</div>
+                      <div className="mt-0.5 text-sm font-bold text-white">{item.title}</div>
                     </div>
                     {item.hasStaticAudio && (
-                      <span className="shrink-0 rounded-full bg-sky-500/15 px-2.5 py-1 text-[11px] font-medium text-sky-300">
+                      <span className="rounded-lg bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-300">
                         Có giọng đọc
                       </span>
                     )}
@@ -993,12 +1025,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal Cài đặt API Key & GitHub */}
+      {/* MODAL CÀI ĐẶT */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#0f172a] p-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-white">Cài đặt Gemini AI & Lưu trữ GitHub</h3>
+            <div className="mb-4 flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white">Cài đặt Gemini API Key & GitHub</h3>
               <button
                 type="button"
                 onClick={() => setShowSettingsModal(false)}
@@ -1008,87 +1040,85 @@ export default function App() {
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 text-xs">
+            <div className="space-y-3.5 text-xs">
               <div>
                 <label className="mb-1 block font-semibold text-slate-300">Gemini API Key</label>
                 <input
                   type="password"
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    localStorage.setItem(API_KEY_STORAGE, e.target.value.trim());
+                  }}
                   placeholder="AIzaSy..."
-                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-indigo-400 focus:outline-none"
                 />
               </div>
 
-              <div className="border-t border-slate-800 pt-3">
-                <div className="mb-2 font-semibold text-indigo-300">
-                  Cấu hình GitHub (lưu bài giảng trực tiếp lên web)
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="mb-1 block font-semibold text-slate-300">GitHub Owner</label>
                   <input
                     type="text"
-                    value={ghConfig.owner}
-                    onChange={(e) => setGhConfig({ ...ghConfig, owner: e.target.value })}
-                    placeholder="GitHub Owner (VD: vutronghanh)"
-                    className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-white"
-                  />
-                  <input
-                    type="text"
-                    value={ghConfig.repo}
-                    onChange={(e) => setGhConfig({ ...ghConfig, repo: e.target.value })}
-                    placeholder="Tên Repo (VD: giai-ve-hinh-toan-thcs)"
-                    className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                    value={githubCfg.owner}
+                    onChange={(e) => setGithubCfg({ ...githubCfg, owner: e.target.value })}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
                   />
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  <input
-                    type="password"
-                    value={ghConfig.token}
-                    onChange={(e) => setGhConfig({ ...ghConfig, token: e.target.value })}
-                    placeholder="GitHub Personal Access Token"
-                    className="col-span-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-white"
-                  />
+                <div>
+                  <label className="mb-1 block font-semibold text-slate-300">Repository</label>
                   <input
                     type="text"
-                    value={ghConfig.branch}
-                    onChange={(e) => setGhConfig({ ...ghConfig, branch: e.target.value })}
-                    placeholder="Branch (main)"
-                    className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                    value={githubCfg.repo}
+                    onChange={(e) => setGithubCfg({ ...githubCfg, repo: e.target.value })}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
                   />
                 </div>
-                {ghTestStatus && (
-                  <div className="mt-2 flex items-center gap-1.5 text-emerald-300">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>{ghTestStatus}</span>
-                  </div>
-                )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-3">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="mb-1 block font-semibold text-slate-300">GitHub Token</label>
+                  <input
+                    type="password"
+                    value={githubCfg.token}
+                    onChange={(e) => setGithubCfg({ ...githubCfg, token: e.target.value })}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-semibold text-slate-300">Branch</label>
+                  <input
+                    type="text"
+                    value={githubCfg.branch}
+                    onChange={(e) => setGithubCfg({ ...githubCfg, branch: e.target.value })}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100"
+                  />
+                </div>
+              </div>
+
+              {ghTestStatus && (
+                <div className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-emerald-300">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>{ghTestStatus}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={async () => {
+                    saveGithubConfigToLocal(githubCfg);
                     try {
-                      await testGithubConnection(ghConfig);
+                      await testGithubConnection(githubCfg);
                       setGhTestStatus('Kết nối GitHub thành công!');
                     } catch (err) {
                       setGhTestStatus(err.message);
                     }
                   }}
-                  className="rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 font-medium text-slate-200 hover:bg-slate-700"
-                >
-                  Kiểm tra GitHub
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.setItem(API_KEY_STORAGE, apiKey.trim());
-                    saveGithubConfigToLocal(ghConfig);
-                    setShowSettingsModal(false);
-                  }}
                   className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-500"
                 >
-                  Lưu cài đặt
+                  Lưu & Kiểm tra
                 </button>
               </div>
             </div>
@@ -1096,33 +1126,19 @@ export default function App() {
         </div>
       )}
 
-      {/* Drawer Xưởng Soạn Bài AI */}
+      {/* XƯỞNG SOẠN BÀI AI */}
       <DraftStudioDrawer
         isOpen={showStudioDrawer}
         onClose={() => setShowStudioDrawer(false)}
         apiKey={apiKey}
         currentLesson={lesson}
+        onApplyLesson={(newL) => {
+          applyLoadedLesson(newL);
+          setShowStudioDrawer(false);
+        }}
         onOpenSettings={() => {
           setShowStudioDrawer(false);
           setShowSettingsModal(true);
-        }}
-        onApplyLesson={async (newDraft, audioEntriesMap, timelineItems) => {
-          if (audioEntriesMap && audioEntriesMap.size > 0) {
-            const unified = await buildUnifiedAudioPackage(timelineItems.length, audioEntriesMap, 0.25);
-            if (unified) {
-              const url = URL.createObjectURL(unified.blob);
-              applyLoadedLesson(
-                {
-                  ...newDraft,
-                  hasStaticAudio: true,
-                  audioTimeline: unified.audioTimeline
-                },
-                url
-              );
-              return;
-            }
-          }
-          applyLoadedLesson(newDraft);
         }}
       />
     </div>
