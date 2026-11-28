@@ -2,44 +2,118 @@ import React, { useMemo } from 'react';
 import katex from 'katex';
 
 /**
- * Chuẩn hóa tiếng Việt & đơn vị đo lỡ nằm bên trong dấu $...$
- * để KaTeX không bao giờ xóa khoảng trắng gây dính chữ (VD: "tại D và ME").
+ * Chuẩn hóa tiếng Việt & đơn vị đo nằm bên trong dấu $...$
+ * để KaTeX KHÔNG bao giờ in nghiêng chữ tiếng Việt hay làm dính liền các từ.
  */
 export function sanitizeLatexVietnameseText(rawLatex) {
   let s = String(rawLatex || '').trim();
   if (!s) return '';
 
-  // Tách các lệnh \text{...} có sẵn ra để không bọc lồng nhau
-  const textSlots = [];
-  s = s.replace(/\\(?:text|mathrm|textbf|textit)\{([^{}]*)\}/g, (_, inner) => {
-    const token = `__TEXSLOT_${textSlots.length}__`;
-    textSlots.push(`\\text{${inner}}`);
-    return token;
-  });
+  // 1. Sửa các hàm lượng giác viết dính tên góc (VD: \sinB -> \sin B, sinB -> \sin B)
+  s = s.replace(/\\(sin|cos|tan|cot|log|ln)\s*([A-Za-z0-9])/g, '\\$1 $2');
+  s = s.replace(/(^|[^\\A-Za-zÀ-ỹ])(sin|cos|tan|cot)\s+([A-Z])/g, '$1\\$2 $3');
 
-  // Tách số dính liền đơn vị đo (VD: 24cm -> 24\text{ cm}, 150° -> 150^\circ)
+  // 2. Tách các khối \text{...}, \mathrm{...}, \textbf{...} có sẵn để bảo toàn
+  const protectedSlots = [];
+  const stash = (val) => {
+    const token = `__SLOT_${protectedSlots.length}__`;
+    protectedSlots.push(val);
+    return token;
+  };
+
+  s = s.replace(/\\(?:text|mathrm|textbf|textit)\{([^{}]*)\}/g, (_, inner) =>
+    stash(`\\text{${inner}}`)
+  );
+
+  // 3. Tách toàn bộ lệnh LaTeX (\dfrac, \triangle, \widehat, \pi, \approx, \sin, ...)
+  // để bộ nhận diện tiếng Việt không bao giờ chạm nhầm vào tên lệnh LaTeX
+  s = s.replace(/\\[a-zA-Z]+/g, (cmd) => stash(cmd));
+
+  // 4. Tách số dính liền đơn vị đo (VD: 24cm -> 24\text{ cm}, 150° -> 150^\circ)
   s = s.replace(
     /(\d+(?:[.,]\d+)?)\s*(mm|cm|dm|km|m|độ|rad)(?=$|[^A-Za-zÀ-ỹ])/gi,
     (_, num, unit) => {
       if (unit.toLowerCase() === 'độ') return `${num}^\\circ`;
-      return `${num}\\text{ ${unit}}`;
+      return `${num}${stash(`\\text{ ${unit}}`)}`;
     }
   );
 
-  // Bọc các cụm từ tiếng Việt có dấu hoặc từ nối tiếng Việt thông dụng nằm trong biểu thức LaTeX
-  const vnPhraseRegex =
-    /(^|[\s,.;:()=<>+\-*/\\^_{}])((?:[A-Za-zÀ-ỹ]*[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][A-Za-zÀ-ỹ]*|\b(?:tai|va|hoac|voi|nen|suy|ra|vi|do|khi|theo|cat|bang|la|co|vuong|goc|song|dong|tam|ban|kinh|dien|tich|chu|vi|quat|lon|nho|don|vi|lam|tron|den|hang|phan|muoi|tram)\b)(?:\s+(?:[A-Za-zÀ-ỹ]*[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][A-Za-zÀ-ỹ]*|\b(?:tai|va|hoac|voi|nen|suy|ra|vi|do|khi|theo|cat|bang|la|co|vuong|goc|song|dong|tam|ban|kinh|dien|tich|chu|vi|quat|lon|nho|don|vi|lam|tron|den|hang|phan|muoi|tram)\b))*)(?=$|[\s,.;:()=<>+\-*/\\^_{}])/gi;
+  // 5. Nhận diện từ tiếng Việt (có dấu HOẶC từ tiếng Việt không dấu như: tia, hai, ta, Thay, Trong, Mà, ...)
+  const hasVietnameseDiacritic =
+    /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/;
 
-  s = s.replace(vnPhraseRegex, (full, prefix, phrase) => {
-    const trimmedPhrase = phrase.trim();
-    if (!trimmedPhrase) return full;
-    const hasLeftSpace = /\s$/.test(prefix) || prefix === '';
-    const leadSpace = hasLeftSpace && prefix !== '' ? ' ' : '';
-    return `${prefix}\\text{${leadSpace}${trimmedPhrase} }`;
-  });
+  // Ký hiệu hình học/biến hợp lệ được phép giữ ở font Toán (in nghiêng chuẩn Toán)
+  const isMathIdentifier = (word) => {
+    if (word === 'đpcm' || word === 'ĐPCM') return false;
+    if (hasVietnameseDiacritic.test(word)) return false;
+    // 1 chữ cái đơn (A, B, C, x, y, R, r, S, n, ...)
+    if (/^[A-Za-z]$/.test(word)) return true;
+    // Tên điểm/đoạn/góc/đa giác viết hoa (AB, BC, ABC, ADME, ...) hoặc hệ trục Oxy, xOy
+    if (/^(?:[A-Z]{2,6}|[xyz]O[xyz]|O[xyz]{1,2})$/.test(word)) return true;
+    return false;
+  };
 
-  // Phục hồi các khối \text{...} gốc
-  s = s.replace(/__TEXSLOT_(\d+)__/g, (_, idx) => textSlots[Number(idx)] || '');
+  // Quét từng token từ / khoảng trắng / ký hiệu để gom các từ tiếng Việt liền nhau thành \text{...}
+  const rawTokens = s.split(/(\s+)/);
+  const out = [];
+  let vnBuffer = [];
+  let prevWasMathOrWord = false;
+
+  const flushVnBuffer = (nextIsMathOrWord) => {
+    if (vnBuffer.length === 0) return;
+    const phrase = vnBuffer.join(' ');
+    const lead = prevWasMathOrWord ? ' ' : '';
+    const trail = nextIsMathOrWord ? ' ' : '';
+    out.push(`\\text{${lead}${phrase}${trail}}`);
+    vnBuffer = [];
+    prevWasMathOrWord = true;
+  };
+
+  for (let i = 0; i < rawTokens.length; i++) {
+    const tok = rawTokens[i];
+    if (!tok) continue;
+
+    if (/^\s+$/.test(tok)) {
+      if (vnBuffer.length === 0) {
+        out.push(tok);
+      }
+      continue;
+    }
+
+    // Kiểm tra xem token có chứa từ thuần chữ cái (không dính placeholder __SLOT_)
+    const plainWordMatch = tok.match(/^([([{"']*)([A-Za-zÀ-ỹ]{2,})([)\]}"'.,;:!?]*)$/);
+    if (plainWordMatch) {
+      const [, openPunc, coreWord, closePunc] = plainWordMatch;
+      if (!isMathIdentifier(coreWord)) {
+        if (openPunc) {
+          flushVnBuffer(false);
+          out.push(openPunc);
+          prevWasMathOrWord = false;
+        }
+        vnBuffer.push(coreWord);
+        if (closePunc) {
+          flushVnBuffer(false);
+          out.push(closePunc);
+          prevWasMathOrWord = false;
+        }
+        continue;
+      }
+    }
+
+    // Token hiện tại là biểu thức Toán / số / placeholder lệnh LaTeX
+    const startsWithMathChar = /^[A-Za-z0-9_\\]/.test(tok);
+    flushVnBuffer(startsWithMathChar);
+    out.push(tok);
+    prevWasMathOrWord = /[A-Za-z0-9_)\]}]$/.test(tok);
+  }
+
+  flushVnBuffer(false);
+  s = out.join('');
+
+  // 6. Phục hồi toàn bộ lệnh LaTeX & các khối \text{...} đã tách
+  for (let pass = 0; pass < 3; pass++) {
+    s = s.replace(/__SLOT_(\d+)__/g, (_, idx) => protectedSlots[Number(idx)] || '');
+  }
 
   return s.replace(/\s+/g, ' ').trim();
 }
@@ -229,7 +303,6 @@ function renderSingleLineHtml(line) {
   const trimmed = String(line || '').trim();
   if (!trimmed) return '';
 
-  // Tách token $...$ và văn bản thường bên ngoài
   const tokens = trimmed.split(/(\$[^$]+\$)/g).filter(Boolean);
   return tokens
     .map((tok) => {
@@ -238,7 +311,6 @@ function renderSingleLineHtml(line) {
         return renderLatexSegmentHtml(inner);
       }
 
-      // Hỗ trợ công thức viết dạng thuần chưa bọc $...$ (nếu có chứa ký hiệu toán đặc biệt)
       if (/[△∠⊥∥⇒⇔≈≤≥≠±×·π°²³√]|(?:\([^()]+\)\s*\/\s*\([^()]+\))/.test(tok)) {
         const converted = convertPlainMathToLatex(tok);
         return renderLatexSegmentHtml(converted);
@@ -267,8 +339,6 @@ export function renderMathBlockHtml(text, { inline = false } = {}) {
     const line = rLine.trim();
     if (!line) continue;
 
-    // Nếu lời dẫn trước dấu ':' khá dài (>= 45 ký tự) và phía sau là chuỗi tính toán có phân số/nhiều dấu '='
-    // thì tách phần phép tính xuống dòng ngay bên dưới lời dẫn cho thoáng mắt
     const colonIdx = findIntroColonIndex(line);
     if (!inline && colonIdx >= 45 && colonIdx < line.length - 1) {
       const before = line.slice(0, colonIdx + 1).trim();
