@@ -1,8 +1,11 @@
 /* ============================================================================
-   BỘ XUẤT VIDEO BÀI GIẢNG MP4 TỐC ĐỘ CAO (WEBCODECS H.264 + AAC + KATEX)
-   - Kết xuất HD 1280x720 gồm đầy đủ: Đề bài, GT – KL, Hình vẽ động, Lời giải & Phụ đề
-   - Hiển thị công thức KaTeX chuẩn xác và ngắt dòng đồng nhất 100% như trên Web
-   - Xuất tệp .mp4 tốc độ cao (nhanh gấp 6–12 lần thời gian thực) + tự động dự phòng
+   BỘ XUẤT VIDEO BÀI GIẢNG MP4 ĐỒNG NHẤT 100% GIAO DIỆN WEB (2x2 GRID + KATEX)
+   - Bố cục 4 khung y hệt trang Web:
+     + Trên trái: ĐỀ BÀI   | Trên phải: GT - KL (Giả thiết & Kết luận)
+     + Dưới trái: HÌNH VẼ  | Dưới phải: LỜI GIẢI CHI TIẾT
+     + Dưới cùng: LỜI THUYẾT MINH
+   - Công thức KaTeX chuẩn font, tự động xuống dòng gọn trong từng khung
+   - Xuất tệp .mp4 tốc độ cao (nhanh gấp 6–12 lần thời gian thực)
    ============================================================================ */
 
 import { renderGeometryScene } from '../components/GeometryCanvas.jsx';
@@ -82,12 +85,12 @@ async function getInlinedKatexCss() {
 }
 
 /**
- * Kết xuất một đoạn HTML KaTeX thành ảnh Canvas 2x Retina sắc nét
+ * Kết xuất một đoạn HTML KaTeX thành ảnh Canvas 2x Retina sắc nét, xuống dòng chuẩn xác
  */
 async function rasterizeKatexHtml({
   htmlContent,
   width,
-  fontSize = 15,
+  fontSize = 14.5,
   lineHeight = 1.44,
   color = '#cbd5e1',
   fontWeight = '400',
@@ -98,7 +101,7 @@ async function rasterizeKatexHtml({
   measureHost.style.width = `${width}px`;
   measureHost.style.fontSize = `${fontSize}px`;
   measureHost.style.lineHeight = String(lineHeight);
-  measureHost.innerHTML = `<div class="math-text-block" style="font-weight:${fontWeight};color:${color};">${htmlContent}</div>`;
+  measureHost.innerHTML = `<div class="math-text-block" style="width:${width}px;box-sizing:border-box;font-weight:${fontWeight};color:${color};word-wrap:break-word;overflow-wrap:break-word;">${htmlContent}</div>`;
 
   const rect = measureHost.getBoundingClientRect();
   const boxW = width;
@@ -107,7 +110,7 @@ async function rasterizeKatexHtml({
   const xhtml = `
     <div xmlns="http://www.w3.org/1999/xhtml"
          class="math-text-block"
-         style="width:${boxW}px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:${fontSize}px;font-weight:${fontWeight};line-height:${lineHeight};color:${color};margin:0;padding:0;">
+         style="width:${boxW}px;box-sizing:border-box;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:${fontSize}px;font-weight:${fontWeight};line-height:${lineHeight};color:${color};margin:0;padding:0;word-wrap:break-word;overflow-wrap:break-word;">
       ${htmlContent}
     </div>
   `;
@@ -116,11 +119,14 @@ async function rasterizeKatexHtml({
     <svg xmlns="http://www.w3.org/2000/svg" width="${boxW * dpr}" height="${boxH * dpr}" viewBox="0 0 ${boxW} ${boxH}">
       <style>
         ${katexCss}
+        .math-text-block { white-space: normal; word-wrap: break-word; overflow-wrap: break-word; }
         .math-text-block .katex { font-size: 1.03em; line-height: 1.42; color: inherit; }
-        .math-line { margin-bottom: 3px; word-break: normal; overflow-wrap: break-word; }
+        .math-text-block .katex .text { font-family: Inter, system-ui, -apple-system, sans-serif; font-style: normal; }
+        .math-line { margin-bottom: 3px; white-space: normal; word-break: normal; overflow-wrap: break-word; }
         .math-line:last-child { margin-bottom: 0; }
         .math-eq-line .katex .mfrac { margin: 0.08em 0.08em; }
         .math-atomic { display: inline-block; white-space: nowrap; vertical-align: middle; }
+        .math-inline-wrap { display: inline; white-space: normal; }
       </style>
       <foreignObject x="0" y="0" width="${boxW}" height="${boxH}">
         ${xhtml}
@@ -147,9 +153,9 @@ async function rasterizeKatexHtml({
 }
 
 /**
- * Kết xuất trước toàn bộ Đề bài, GT–KL và từng bước Lời giải bằng KaTeX
+ * Kết xuất trước Đề bài (trên trái), GT–KL (trên phải) và Lời giải (dưới phải) bằng KaTeX
  */
-async function preRenderLectureTypography(lesson, rightW) {
+async function preRenderLectureTypography(lesson, leftW, rightW) {
   try {
     const katexCss = await getInlinedKatexCss();
     const measureHost = document.createElement('div');
@@ -163,10 +169,7 @@ async function preRenderLectureTypography(lesson, rightW) {
     ].join(';');
     document.body.appendChild(measureHost);
 
-    const innerW = rightW - 36;
-    const halfColW = Math.floor((innerW - 18) / 2);
-
-    // 1. Đề bài
+    // 1. Đề bài (ô trên bên trái)
     let problemAsset = null;
     const problemText = String(lesson?.problemText || '').trim();
     if (problemText) {
@@ -174,9 +177,9 @@ async function preRenderLectureTypography(lesson, rightW) {
       if (pHtml) {
         problemAsset = await rasterizeKatexHtml({
           htmlContent: pHtml,
-          width: innerW,
+          width: leftW - 36,
           fontSize: 13.5,
-          lineHeight: 1.4,
+          lineHeight: 1.42,
           color: '#f1f5f9',
           fontWeight: '400',
           katexCss,
@@ -185,7 +188,7 @@ async function preRenderLectureTypography(lesson, rightW) {
       }
     }
 
-    // 2. Giả thiết (GT) & Kết luận (KL)
+    // 2. Giả thiết (GT) & Kết luận (KL) (ô trên bên phải, chia 2 cột)
     const givenList = Array.isArray(lesson?.given)
       ? lesson.given.filter(Boolean)
       : lesson?.given
@@ -197,6 +200,8 @@ async function preRenderLectureTypography(lesson, rightW) {
       ? [String(lesson.prove)]
       : [];
 
+    const gtKlColW = Math.floor((rightW - 52) / 2);
+
     let givenAsset = null;
     if (givenList.length > 0) {
       const gHtml = givenList
@@ -205,7 +210,7 @@ async function preRenderLectureTypography(lesson, rightW) {
       if (gHtml) {
         givenAsset = await rasterizeKatexHtml({
           htmlContent: gHtml,
-          width: halfColW,
+          width: gtKlColW,
           fontSize: 13,
           lineHeight: 1.38,
           color: '#e2e8f0',
@@ -224,7 +229,7 @@ async function preRenderLectureTypography(lesson, rightW) {
       if (kHtml) {
         proveAsset = await rasterizeKatexHtml({
           htmlContent: kHtml,
-          width: halfColW,
+          width: gtKlColW,
           fontSize: 13,
           lineHeight: 1.38,
           color: '#e2e8f0',
@@ -235,7 +240,7 @@ async function preRenderLectureTypography(lesson, rightW) {
       }
     }
 
-    // 3. Các bước lời giải
+    // 3. Các bước lời giải (ô dưới bên phải)
     const solutionSteps = Array.isArray(lesson?.solutionSteps) ? lesson.solutionSteps : [];
     const maxLineW = rightW - 44;
     const solutionAssets = [];
@@ -318,7 +323,7 @@ function wrapCleanText(ctx, text, maxWidth) {
 }
 
 /**
- * Tạo hàm vẽ từng khung hình HD 1280x720 tại mốc thời gian elapsedSec
+ * Tạo hàm vẽ từng khung hình HD 1280x720 đồng nhất 100% với bố cục 4 khung của Web
  */
 function createFrameRenderer({
   ctx,
@@ -337,10 +342,27 @@ function createFrameRenderer({
   const timeline = Array.isArray(lesson?.audioTimeline) ? lesson.audioTimeline : [];
   const fallbackStepDuration = 2.4;
 
+  const leftX = 20;
+  const leftW = 610;
   const rightX = 646;
-  const topY = 74;
   const rightW = 614;
-  const bodyH = 540;
+  const topY = 66;
+  const bottomLimitY = 618;
+
+  // Tính chiều cao đồng bộ cho hàng trên (ĐỀ BÀI bên trái & GT-KL bên phải)
+  const pAsset = preRendered?.problemAsset || null;
+  const gAsset = preRendered?.givenAsset || null;
+  const kAsset = preRendered?.proveAsset || null;
+
+  const neededLeftTopH = pAsset ? 38 + pAsset.height + 10 : 112;
+  const neededRightTopH =
+    gAsset || kAsset
+      ? 56 + Math.max(gAsset?.height || 0, kAsset?.height || 0) + 10
+      : 112;
+
+  const topRowH = Math.min(182, Math.max(114, neededLeftTopH, neededRightTopH));
+  const bottomRowY = topY + topRowH + 10;
+  const bottomRowH = bottomLimitY - bottomRowY;
 
   return (elapsedSec) => {
     let mode = 'draw';
@@ -389,32 +411,130 @@ function createFrameRenderer({
 
     // 2. Thanh tiêu đề trên cùng
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, W, 62);
+    ctx.fillRect(0, 0, W, 56);
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(0, 62);
-    ctx.lineTo(W, 62);
+    ctx.moveTo(0, 56);
+    ctx.lineTo(W, 56);
     ctx.stroke();
 
     ctx.fillStyle = '#34d399';
-    ctx.font = 'bold 15px Inter, system-ui, sans-serif';
-    ctx.fillText(`${lesson?.grade || 'Toán THCS'} • ${lesson?.topic || ''}`, 28, 25);
+    ctx.font = 'bold 14px Inter, system-ui, sans-serif';
+    ctx.fillText(`${lesson?.grade || 'Toán THCS'} • ${lesson?.topic || ''}`, 24, 22);
 
     ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 19px Inter, system-ui, sans-serif';
-    ctx.fillText(lesson?.title || 'Bài giảng Hình học THCS', 28, 49);
+    ctx.font = 'bold 18px Inter, system-ui, sans-serif';
+    ctx.fillText(lesson?.title || 'Bài giảng Hình học THCS', 24, 45);
 
-    // 3. Khung hình vẽ bên trái
-    const leftX = 20;
-    const leftW = 610;
+    // 3. KHUNG TRÊN BÊN TRÁI: ĐỀ BÀI (giống hệt Web)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.roundRect(leftX, topY, leftW, topRowH, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 13.5px Inter, system-ui, sans-serif';
+    ctx.fillText('ĐỀ BÀI', leftX + 18, topY + 21);
+
+    ctx.strokeStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(leftX, topY + 29);
+    ctx.lineTo(leftX + leftW, topY + 29);
+    ctx.stroke();
 
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(leftX, topY, leftW, bodyH, 14);
+    ctx.rect(leftX + 8, topY + 32, leftW - 16, topRowH - 36);
     ctx.clip();
-    ctx.translate(leftX, topY);
-    renderGeometryScene(ctx, leftW, bodyH, {
+
+    if (pAsset) {
+      ctx.drawImage(
+        pAsset.canvas,
+        leftX + 18,
+        topY + 35,
+        pAsset.width,
+        pAsset.height
+      );
+    } else if (lesson?.problemText) {
+      ctx.fillStyle = '#f1f5f9';
+      ctx.font = '13.5px Inter, system-ui, sans-serif';
+      const pLines = wrapCleanText(ctx, lesson.problemText, leftW - 36);
+      let py = topY + 49;
+      pLines.forEach((ln) => {
+        ctx.fillText(ln, leftX + 18, py);
+        py += 19;
+      });
+    }
+    ctx.restore();
+
+    // 4. KHUNG TRÊN BÊN PHẢI: GT - KL (giống hệt Web)
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.roundRect(rightX, topY, rightW, topRowH, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 13.5px Inter, system-ui, sans-serif';
+    ctx.fillText('GT - KL', rightX + 18, topY + 21);
+
+    ctx.strokeStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(rightX, topY + 29);
+    ctx.lineTo(rightX + rightW, topY + 29);
+    ctx.stroke();
+
+    const midColX = rightX + Math.floor(rightW / 2);
+    ctx.strokeStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(midColX, topY + 33);
+    ctx.lineTo(midColX, topY + topRowH - 6);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(rightX + 8, topY + 31, rightW - 16, topRowH - 35);
+    ctx.clip();
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 12.5px Inter, system-ui, sans-serif';
+    ctx.fillText('Giả thiết (GT):', rightX + 18, topY + 46);
+    if (gAsset) {
+      ctx.drawImage(
+        gAsset.canvas,
+        rightX + 18,
+        topY + 51,
+        gAsset.width,
+        gAsset.height
+      );
+    }
+
+    ctx.fillStyle = '#34d399';
+    ctx.fillText('Kết luận (KL):', midColX + 14, topY + 46);
+    if (kAsset) {
+      ctx.drawImage(
+        kAsset.canvas,
+        midColX + 14,
+        topY + 51,
+        kAsset.width,
+        kAsset.height
+      );
+    }
+    ctx.restore();
+
+    // 5. KHUNG DƯỚI BÊN TRÁI: HÌNH VẼ ĐỘNG (ngay dưới ĐỀ BÀI)
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(leftX, bottomRowY, leftW, bottomRowH, 12);
+    ctx.clip();
+    ctx.translate(leftX, bottomRowY);
+    renderGeometryScene(ctx, leftW, bottomRowH, {
       geometry: lesson?.geometry,
       mode,
       activeDrawStep: drawIdx,
@@ -424,142 +544,44 @@ function createFrameRenderer({
       zoom: 1,
       showGrid: true,
       showLabels: true,
-      padTop: 32,
-      padBottom: 20,
-      padX: 24
+      padTop: 26,
+      padBottom: 18,
+      padX: 22
     });
     ctx.restore();
 
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(leftX, topY, leftW, bodyH, 14);
+    ctx.roundRect(leftX, bottomRowY, leftW, bottomRowH, 12);
     ctx.stroke();
 
-    // 4. Khung trên bên phải: ĐỀ BÀI & GT – KL
-    const pAsset = preRendered?.problemAsset || null;
-    const gAsset = preRendered?.givenAsset || null;
-    const kAsset = preRendered?.proveAsset || null;
-    const hasGtKl = Boolean(gAsset || kAsset);
-    const gtKlRowH = hasGtKl
-      ? Math.max(gAsset?.height || 0, kAsset?.height || 0) + 24
-      : 0;
-
-    const rawProblemCardH =
-      34 +
-      (pAsset ? pAsset.height + 8 : 38) +
-      (hasGtKl ? gtKlRowH + 8 : 4);
-    const problemCardH = Math.min(220, Math.max(104, rawProblemCardH));
-
+    // 6. KHUNG DƯỚI BÊN PHẢI: LỜI GIẢI CHI TIẾT (ngay dưới GT - KL)
     ctx.fillStyle = '#0f172a';
     ctx.beginPath();
-    ctx.roundRect(rightX, topY, rightW, problemCardH, 14);
-    ctx.fill();
-    ctx.strokeStyle = '#1e3a5f';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 14px Inter, system-ui, sans-serif';
-    ctx.fillText('ĐỀ BÀI & GIẢ THIẾT – KẾT LUẬN', rightX + 18, topY + 22);
-
-    ctx.strokeStyle = '#1e293b';
-    ctx.beginPath();
-    ctx.moveTo(rightX, topY + 30);
-    ctx.lineTo(rightX + rightW, topY + 30);
-    ctx.stroke();
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(rightX + 8, topY + 32, rightW - 16, problemCardH - 36);
-    ctx.clip();
-
-    let pCursorY = topY + 36;
-    if (pAsset) {
-      ctx.drawImage(
-        pAsset.canvas,
-        rightX + 18,
-        pCursorY,
-        pAsset.width,
-        pAsset.height
-      );
-      pCursorY += pAsset.height + 6;
-    } else if (lesson?.problemText) {
-      ctx.fillStyle = '#f1f5f9';
-      ctx.font = '13.5px Inter, system-ui, sans-serif';
-      const pLines = wrapCleanText(ctx, lesson.problemText, rightW - 36).slice(0, 3);
-      pLines.forEach((ln) => {
-        ctx.fillText(ln, rightX + 18, pCursorY + 14);
-        pCursorY += 19;
-      });
-      pCursorY += 4;
-    }
-
-    if (hasGtKl) {
-      const halfW = Math.floor((rightW - 36) / 2);
-      const col1X = rightX + 18;
-      const col2X = rightX + 18 + halfW + 10;
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(col1X - 4, pCursorY, rightW - 28, gtKlRowH, 8);
-      ctx.stroke();
-
-      // Đường chia dọc giữa GT và KL
-      ctx.beginPath();
-      ctx.moveTo(col2X - 6, pCursorY + 4);
-      ctx.lineTo(col2X - 6, pCursorY + gtKlRowH - 4);
-      ctx.stroke();
-
-      ctx.fillStyle = '#34d399';
-      ctx.font = 'bold 12.5px Inter, system-ui, sans-serif';
-      ctx.fillText('GT:', col1X + 2, pCursorY + 15);
-      if (gAsset) {
-        ctx.drawImage(
-          gAsset.canvas,
-          col1X + 2,
-          pCursorY + 19,
-          gAsset.width,
-          gAsset.height
-        );
-      }
-
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillText('KL:', col2X + 2, pCursorY + 15);
-      if (kAsset) {
-        ctx.drawImage(
-          kAsset.canvas,
-          col2X + 2,
-          pCursorY + 19,
-          kAsset.width,
-          kAsset.height
-        );
-      }
-    }
-    ctx.restore();
-
-    // 5. Khung dưới bên phải: LỜI GIẢI CHI TIẾT
-    const solveTopY = topY + problemCardH + 10;
-    const solveH = bodyH - problemCardH - 10;
-
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.roundRect(rightX, solveTopY, rightW, solveH, 14);
+    ctx.roundRect(rightX, bottomRowY, rightW, bottomRowH, 12);
     ctx.fill();
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     ctx.fillStyle = '#34d399';
-    ctx.font = 'bold 14.5px Inter, system-ui, sans-serif';
-    ctx.fillText('LỜI GIẢI CHI TIẾT', rightX + 18, solveTopY + 24);
+    ctx.font = 'bold 13.5px Inter, system-ui, sans-serif';
+    ctx.fillText('LỜI GIẢI CHI TIẾT', rightX + 18, bottomRowY + 21);
+
+    const stepBadgeText =
+      mode === 'solve' && solveIdx >= 0
+        ? `${solveIdx + 1} / ${totalSolve}`
+        : `0 / ${totalSolve}`;
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '600 12.5px Inter, system-ui, sans-serif';
+    const badgeW = ctx.measureText(stepBadgeText).width;
+    ctx.fillText(stepBadgeText, rightX + rightW - 18 - badgeW, bottomRowY + 21);
 
     ctx.strokeStyle = '#1e293b';
     ctx.beginPath();
-    ctx.moveTo(rightX, solveTopY + 33);
-    ctx.lineTo(rightX + rightW, solveTopY + 33);
+    ctx.moveTo(rightX, bottomRowY + 29);
+    ctx.lineTo(rightX + rightW, bottomRowY + 29);
     ctx.stroke();
 
     const visibleSteps =
@@ -571,17 +593,17 @@ function createFrameRenderer({
       ctx.fillText(
         `Đang dựng hình theo giả thiết (Bước ${Math.min(drawIdx + 1, Math.max(1, totalDraw))}/${Math.max(1, totalDraw)})...`,
         rightX + 18,
-        solveTopY + 62
+        bottomRowY + 58
       );
       ctx.fillStyle = '#64748b';
       ctx.font = '13.5px Inter, system-ui, sans-serif';
       ctx.fillText(
         'Các bước chứng minh chi tiết sẽ hiển thị ngay sau khi dựng xong hình.',
         rightX + 18,
-        solveTopY + 86
+        bottomRowY + 82
       );
     } else {
-      let cursorY = solveTopY + 44;
+      let cursorY = bottomRowY + 40;
       const maxLineW = rightW - 44;
 
       const renderedBlocks = visibleSteps.map((st, idx) => {
@@ -612,14 +634,14 @@ function createFrameRenderer({
         (sum, b) => sum + b.height + 13,
         0
       );
-      const availTextHeight = solveH - 46;
+      const availTextHeight = bottomRowH - 42;
       if (totalTextHeight > availTextHeight) {
         cursorY -= totalTextHeight - availTextHeight;
       }
 
       ctx.save();
       ctx.beginPath();
-      ctx.rect(rightX + 8, solveTopY + 36, rightW - 16, solveH - 42);
+      ctx.rect(rightX + 8, bottomRowY + 32, rightW - 16, bottomRowH - 38);
       ctx.clip();
 
       renderedBlocks.forEach((blk) => {
@@ -656,7 +678,7 @@ function createFrameRenderer({
       ctx.restore();
     }
 
-    // 6. Thanh lời thuyết minh dưới cùng
+    // 7. Thanh lời thuyết minh dưới cùng
     const subY = 626;
     const subH = 78;
     ctx.fillStyle = '#0f172a';
@@ -701,9 +723,9 @@ async function exportFastWebCodecsMp4({
   const fps = 24;
 
   const videoCodecCandidates = [
-    'avc1.4d002a', // H.264 Main L4.2
-    'avc1.42001f', // H.264 Baseline L3.1
-    'avc1.640028'  // H.264 High L4.0
+    'avc1.4d002a',
+    'avc1.42001f',
+    'avc1.640028'
   ];
 
   let supportedVideoConfig = null;
@@ -728,7 +750,6 @@ async function exportFastWebCodecsMp4({
 
   if (!supportedVideoConfig) return null;
 
-  // Giải mã âm thanh (nếu có) bằng AudioContext
   let decodedAudio = null;
   if (audioUrl) {
     try {
@@ -762,7 +783,6 @@ async function exportFastWebCodecsMp4({
     channels
   });
 
-  // 1. Mã hóa âm thanh AAC (nếu trình duyệt hỗ trợ AudioEncoder + mp4a.40.2)
   if (decodedAudio && typeof AudioEncoder !== 'undefined' && typeof AudioData !== 'undefined') {
     try {
       const aCheck = await AudioEncoder.isConfigSupported({
@@ -815,13 +835,11 @@ async function exportFastWebCodecsMp4({
       }
     } catch (e) {
       if (e?.message === 'ABORTED') throw e;
-      // Bỏ qua lỗi audio encoder để vẫn xuất trọn vẹn video hình
     }
   }
 
   onProgress?.(8);
 
-  // 2. Kết xuất & mã hóa từng khung hình H.264 ở tốc độ tối đa (nhanh gấp 6-12 lần)
   let vError = null;
   const videoEncoder = new VideoEncoder({
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
@@ -861,7 +879,6 @@ async function exportFastWebCodecsMp4({
     videoEncoder.encode(frame, { keyFrame: isKeyFrame });
     frame.close();
 
-    // Điều tiết hàng đợi encoder & cập nhật thanh tiến trình mượt mà
     if (videoEncoder.encodeQueueSize > 8) {
       await new Promise((r) => setTimeout(r, 4));
     } else if (frameIdx % 4 === 0) {
@@ -1030,8 +1047,9 @@ export async function exportLectureVideo({
   const totalDurationSecFallback = totalSteps * 2.4;
 
   onProgress?.(2);
+  const leftW = 610;
   const rightW = 614;
-  const preRendered = await preRenderLectureTypography(lesson, rightW);
+  const preRendered = await preRenderLectureTypography(lesson, leftW, rightW);
   onProgress?.(5);
 
   const drawFrameAtTime = createFrameRenderer({
@@ -1044,7 +1062,6 @@ export async function exportLectureVideo({
     preRendered
   });
 
-  // Ưu tiên xuất .mp4 tốc độ cao bằng WebCodecs (H.264 + AAC)
   let videoBlob = await exportFastWebCodecsMp4({
     canvas,
     drawFrameAtTime,
@@ -1054,7 +1071,6 @@ export async function exportLectureVideo({
     signal
   });
 
-  // Dự phòng tự động nếu trình duyệt không hỗ trợ WebCodecs
   if (!videoBlob) {
     videoBlob = await exportFallbackMediaRecorder({
       canvas,

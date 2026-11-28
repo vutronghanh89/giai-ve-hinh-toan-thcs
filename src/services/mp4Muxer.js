@@ -94,7 +94,6 @@ function buildStsc(sampleCount) {
   if (sampleCount <= 0) {
     return fullBox('stsc', 0, 0, u32(0));
   }
-  // 1 sample per chunk -> single compact entry covers all chunks
   return fullBox('stsc', 0, 0, u32(1), u32(1), u32(1), u32(1));
 }
 
@@ -114,7 +113,7 @@ function buildEsds(audioSpecificConfig) {
   const asc =
     audioSpecificConfig && audioSpecificConfig.byteLength > 0
       ? new Uint8Array(audioSpecificConfig)
-      : new Uint8Array([0x11, 0x90]); // AAC-LC 48kHz stereo fallback
+      : new Uint8Array([0x11, 0x90]);
 
   const decSpecInfo = concatUint8Arrays([
     new Uint8Array([0x05, asc.byteLength]),
@@ -126,12 +125,12 @@ function buildEsds(audioSpecificConfig) {
     new Uint8Array([
       0x04,
       decConfigLen,
-      0x40, // Audio ISO/IEC 14496-3 (AAC)
-      0x15, // Audio stream
-      0x00, 0x00, 0x00 // bufferSizeDB
+      0x40,
+      0x15,
+      0x00, 0x00, 0x00
     ]),
-    u32(128000), // maxBitrate
-    u32(128000), // avgBitrate
+    u32(128000),
+    u32(128000),
     decSpecInfo
   ]);
 
@@ -154,8 +153,8 @@ export class SimpleMp4Muxer {
     this.sampleRate = sampleRate;
     this.channels = channels;
 
-    this.videoSamples = []; // { data: Uint8Array, durationTicks: number, isKey: boolean }
-    this.audioSamples = []; // { data: Uint8Array, durationTicks: number }
+    this.videoSamples = [];
+    this.audioSamples = [];
     this.avcC = null;
     this.audioSpecificConfig = null;
   }
@@ -218,32 +217,30 @@ export class SimpleMp4Muxer {
 
     const movieDurationMs = Math.max(videoDurationMs, audioDurationMs);
 
-    // Xây dựng moov lần 1 với offset = 0 để tính chính xác kích thước header (ftyp + moov + mdat header)
     const buildMoov = (videoOffsets, audioOffsets) => {
       const mvhd = fullBox(
         'mvhd',
         0,
         0,
-        u32(0), // creation_time
-        u32(0), // modification_time
-        u32(1000), // timescale
+        u32(0),
+        u32(0),
+        u32(1000),
         u32(movieDurationMs),
-        u32(0x00010000), // rate 1.0
-        u16(0x0100), // volume 1.0
-        new Uint8Array(10), // reserved
+        u32(0x00010000),
+        u16(0x0100),
+        new Uint8Array(10),
         unityMatrix(),
-        new Uint8Array(24), // pre_defined
-        u32(hasAudio ? 3 : 2) // next_track_ID
+        new Uint8Array(24),
+        u32(hasAudio ? 3 : 2)
       );
 
-      // Video Track
       const vTkhd = fullBox(
         'tkhd',
         0,
         3,
         u32(0),
         u32(0),
-        u32(1), // track_ID
+        u32(1),
         u32(0),
         u32(videoDurationMs),
         new Uint8Array(8),
@@ -264,7 +261,7 @@ export class SimpleMp4Muxer {
         u32(0),
         u32(90000),
         u32(videoTotalTicks),
-        u16(0x55c4), // 'und'
+        u16(0x55c4),
         u16(0)
       );
 
@@ -286,8 +283,8 @@ export class SimpleMp4Muxer {
       const compressorName = new Uint8Array(32);
       const avc1 = box(
         'avc1',
-        new Uint8Array(6), // reserved
-        u16(1), // data_reference_index
+        new Uint8Array(6),
+        u16(1),
         u16(0),
         u16(0),
         new Uint8Array(12),
@@ -323,20 +320,19 @@ export class SimpleMp4Muxer {
         return box('moov', mvhd, vTrak);
       }
 
-      // Audio Track
       const aTkhd = fullBox(
         'tkhd',
         0,
         3,
         u32(0),
         u32(0),
-        u32(2), // track_ID
+        u32(2),
         u32(0),
         u32(audioDurationMs),
         new Uint8Array(8),
         i16(0),
         i16(0),
-        i16(0x0100), // volume 1.0
+        i16(0x0100),
         u16(0),
         unityMatrix(),
         u32(0),
@@ -373,10 +369,10 @@ export class SimpleMp4Muxer {
       const mp4a = box(
         'mp4a',
         new Uint8Array(6),
-        u16(1), // data_reference_index
+        u16(1),
         new Uint8Array(8),
         u16(this.channels),
-        u16(16), // sampleSize
+        u16(16),
         u16(0),
         u16(0),
         u32(this.sampleRate << 16),
