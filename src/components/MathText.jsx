@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react';
 import katex from 'katex';
 
+const VN_DIACRITIC_REGEX =
+  /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/;
+
 /**
  * Chuẩn hóa tiếng Việt & đơn vị đo nằm bên trong dấu $...$
  * để KaTeX KHÔNG bao giờ in nghiêng chữ tiếng Việt hay làm dính liền các từ.
@@ -9,7 +12,7 @@ export function sanitizeLatexVietnameseText(rawLatex) {
   let s = String(rawLatex || '').trim();
   if (!s) return '';
 
-  // 1. Sửa các hàm lượng giác viết dính tên góc (VD: \sinB -> \sin B, sinB -> \sin B)
+  // 1. Tách các hàm lượng giác viết dính tên góc (VD: \sinB -> \sin B, sinB -> \sin B)
   s = s.replace(/\\(sin|cos|tan|cot|log|ln)\s*([A-Za-z0-9])/g, '\\$1 $2');
   s = s.replace(/(^|[^\\A-Za-zÀ-ỹ])(sin|cos|tan|cot)\s+([A-Z])/g, '$1\\$2 $3');
 
@@ -26,7 +29,6 @@ export function sanitizeLatexVietnameseText(rawLatex) {
   );
 
   // 3. Tách toàn bộ lệnh LaTeX (\dfrac, \triangle, \widehat, \pi, \approx, \sin, ...)
-  // để bộ nhận diện tiếng Việt không bao giờ chạm nhầm vào tên lệnh LaTeX
   s = s.replace(/\\[a-zA-Z]+/g, (cmd) => stash(cmd));
 
   // 4. Tách số dính liền đơn vị đo (VD: 24cm -> 24\text{ cm}, 150° -> 150^\circ)
@@ -38,15 +40,13 @@ export function sanitizeLatexVietnameseText(rawLatex) {
     }
   );
 
-  // 5. Nhận diện từ tiếng Việt (có dấu HOẶC từ tiếng Việt không dấu như: tia, hai, ta, Thay, Trong, Mà, ...)
-  const hasVietnameseDiacritic =
-    /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/;
-
-  // Ký hiệu hình học/biến hợp lệ được phép giữ ở font Toán (in nghiêng chuẩn Toán)
+  // 5. Nhận diện từ tiếng Việt (bao gồm cả từ 1 chữ cái có dấu như: ở, à, ạ, ý, ổ, ế, ...)
   const isMathIdentifier = (word) => {
+    if (!word) return false;
     if (word === 'đpcm' || word === 'ĐPCM') return false;
-    if (hasVietnameseDiacritic.test(word)) return false;
-    // 1 chữ cái đơn (A, B, C, x, y, R, r, S, n, ...)
+    // Bất kỳ từ nào có dấu tiếng Việt (kể cả 1 ký tự như "ở", "à", "ý") đều là tiếng Việt
+    if (VN_DIACRITIC_REGEX.test(word)) return false;
+    // 1 chữ cái Latin đơn (A, B, C, x, y, R, r, S, n, ...)
     if (/^[A-Za-z]$/.test(word)) return true;
     // Tên điểm/đoạn/góc/đa giác viết hoa (AB, BC, ABC, ADME, ...) hoặc hệ trục Oxy, xOy
     if (/^(?:[A-Z]{2,6}|[xyz]O[xyz]|O[xyz]{1,2})$/.test(word)) return true;
@@ -80,8 +80,8 @@ export function sanitizeLatexVietnameseText(rawLatex) {
       continue;
     }
 
-    // Kiểm tra xem token có chứa từ thuần chữ cái (không dính placeholder __SLOT_)
-    const plainWordMatch = tok.match(/^([([{"']*)([A-Za-zÀ-ỹ]{2,})([)\]}"'.,;:!?]*)$/);
+    // Kiểm tra từ tiếng Việt (cho phép 1 ký tự nếu có dấu tiếng Việt, hoặc >= 2 ký tự chữ cái)
+    const plainWordMatch = tok.match(/^([([{"']*)([A-Za-zÀ-ỹ]+)([)\]}"'.,;:!?]*)$/);
     if (plainWordMatch) {
       const [, openPunc, coreWord, closePunc] = plainWordMatch;
       if (!isMathIdentifier(coreWord)) {
@@ -144,7 +144,7 @@ function renderKatexHtml(latex, displayMode = false) {
 }
 
 /**
- * Chuyển đổi biểu thức toán học viết dạng văn bản thường sang chuẩn LaTeX
+ * Chuyển đổi cụm ký hiệu toán học viết dạng văn bản thường sang chuẩn LaTeX
  */
 export function convertPlainMathToLatex(rawExpr) {
   let s = String(rawExpr || '').trim();
@@ -164,52 +164,13 @@ export function convertPlainMathToLatex(rawExpr) {
     .replace(/±/g, ' \\pm ')
     .replace(/×/g, ' \\times ')
     .replace(/·/g, ' \\cdot ')
-    .replace(/\s+\.\s+/g, ' \\cdot ')
     .replace(/π/g, '\\pi ')
-    .replace(/°/g, '^\\circ');
-
-  s = s.replace(
-    /([A-Za-z])_([A-Za-zÀ-ỹ0-9]+(?:\s+[A-Za-zÀ-ỹ0-9]+){0,2})/g,
-    (_, base, sub) => {
-      if (/^[0-9a-zA-Z]$/.test(sub)) return `${base}_${sub}`;
-      return `${base}_{\\text{${sub.trim()}}}`;
-    }
-  );
-
-  s = s.replace(/²/g, '^2').replace(/³/g, '^3').replace(/⁴/g, '^4');
-
-  s = s
+    .replace(/°/g, '^\\circ')
+    .replace(/²/g, '^2')
+    .replace(/³/g, '^3')
+    .replace(/⁴/g, '^4')
     .replace(/√\(([^()]+)\)/g, '\\sqrt{$1}')
     .replace(/√([A-Za-z0-9.,]+)/g, '\\sqrt{$1}');
-
-  let prev;
-  let guard = 0;
-  do {
-    prev = s;
-    s = s
-      .replace(/\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g, '\\dfrac{$1}{$2}')
-      .replace(
-        /\(([^()]+)\)\s*\/\s*([A-Za-z0-9_.,^{}\\-]+(?:\s*\\cdot\s*[A-Za-z0-9_.,^{}\\-]+)*)/g,
-        '\\dfrac{$1}{$2}'
-      )
-      .replace(
-        /([A-Za-z0-9_.,^{}\\-]+(?:\s*\\cdot\s*[A-Za-z0-9_.,^{}\\-]+)*)\s*\/\s*\(([^()]+)\)/g,
-        '\\dfrac{$1}{$2}'
-      );
-    guard++;
-  } while (s !== prev && guard < 6);
-
-  s = s.replace(
-    /(^|[\s=≈(+×-])(\d+(?:[.,]\d+)?|[A-Z]{1,3}|\\pi)\s*\/\s*(\d+(?:[.,]\d+)?|[A-Z]{1,3})(?=$|[\s=≈)+×.,;:])/g,
-    '$1\\dfrac{$2}{$3}'
-  );
-
-  s = s.replace(
-    /\(\s*(mm|cm|dm|m|km|độ|rad)(\^[0-9]+)?\s*\)/gi,
-    (_, unit, pow) => {
-      return `\\ (\\text{${unit}}${pow || ''})`;
-    }
-  );
 
   return s.replace(/\s+/g, ' ').trim();
 }
@@ -252,12 +213,24 @@ function splitAtomicEqualityChunks(latexExpr) {
 
 /**
  * Kết xuất một khối biểu thức LaTeX thành HTML KaTeX:
- * - Giữ toàn bộ vế biến đổi trên cùng 1 hàng ngang nếu còn chỗ.
- * - Chỉ ngắt dòng tại dấu '=' / '≈' khi chạm giới hạn chiều rộng khung.
+ * - Nếu chứa lời văn tiếng Việt dài: cho phép ngắt dòng tự nhiên theo khung chứa.
+ * - Nếu là dãy biến đổi toán học thuần túy: giữ liền trên 1 hàng ngang và chỉ xuống dòng ngay trước dấu '=' / '≈' khi chạm mép khung.
  */
 function renderLatexSegmentHtml(rawLatex) {
   const cleaned = String(rawLatex || '').trim();
   if (!cleaned) return '';
+
+  const sanitized = sanitizeLatexVietnameseText(cleaned);
+
+  // Nếu biểu thức có chứa nhiều từ tiếng Việt (VD: \text{...}), không ép nowrap toàn khối
+  // để tránh tràn khung chứa trên Đề bài / GT-KL
+  const textMatches = sanitized.match(/\\text\{[^}]+\}/g) || [];
+  const totalVietnameseWords = textMatches.join(' ').trim().split(/\s+/).filter(Boolean).length;
+  if (totalVietnameseWords >= 3) {
+    const html = renderKatexHtml(cleaned, false);
+    if (!html) return escapeHtml(`$${cleaned}$`);
+    return `<span class="math-inline-wrap">${html}</span>`;
+  }
 
   const chunks = splitAtomicEqualityChunks(cleaned);
   if (chunks.length <= 1) {
@@ -273,6 +246,39 @@ function renderLatexSegmentHtml(rawLatex) {
       return `<span class="math-atomic">${html}</span>`;
     })
     .join(' ');
+}
+
+/**
+ * Render văn bản thường (nằm NGOÀI dấu $...$) sao cho:
+ * - Toàn bộ câu văn tiếng Việt tự động xuống dòng chuẩn xác theo độ rộng khung chứa (không bao giờ tràn ngang).
+ * - Các ký hiệu toán rời rạc (150°, cm², △ABC, ∠ABC, ⊥, ∥, π, ≈, √...) được kết xuất đẹp mắt.
+ */
+function renderPlainProseWithInlineSymbols(plainText) {
+  const text = String(plainText || '');
+  if (!text) return '';
+
+  // Chỉ bắt các cụm ký hiệu toán học cục bộ (không nuốt cả câu văn tiếng Việt)
+  const inlineMathPattern =
+    /(△\s*[A-Za-z0-9]+|∠\s*[A-Za-z0-9]{2,4}|\b[A-Z]{1,3}\s*[⊥∥]\s*[A-Z]{1,3}\b|\b(?:mm|cm|dm|km|m)[²³⁴]|\d+(?:[.,]\d+)?°|√\([^()]+\)|√[A-Za-z0-9.,]+|[⊥∥⇒⇔≈≤≥≠π])/g;
+
+  const parts = text.split(inlineMathPattern);
+  return parts
+    .map((part, idx) => {
+      if (!part) return '';
+      if (idx % 2 === 1) {
+        // Đơn vị có số mũ như cm² -> giữ font thẳng đẹp mắt
+        const unitPowMatch = part.match(/^(mm|cm|dm|km|m)([²³⁴])$/);
+        if (unitPowMatch) {
+          const exp = { '²': '2', '³': '3', '⁴': '4' }[unitPowMatch[2]] || '';
+          return `${escapeHtml(unitPowMatch[1])}<sup>${exp}</sup>`;
+        }
+        const latex = convertPlainMathToLatex(part);
+        const html = renderKatexHtml(latex, false);
+        if (html) return `<span class="math-atomic">${html}</span>`;
+      }
+      return escapeHtml(part);
+    })
+    .join('');
 }
 
 /**
@@ -310,13 +316,7 @@ function renderSingleLineHtml(line) {
         const inner = tok.slice(1, -1);
         return renderLatexSegmentHtml(inner);
       }
-
-      if (/[△∠⊥∥⇒⇔≈≤≥≠±×·π°²³√]|(?:\([^()]+\)\s*\/\s*\([^()]+\))/.test(tok)) {
-        const converted = convertPlainMathToLatex(tok);
-        return renderLatexSegmentHtml(converted);
-      }
-
-      return escapeHtml(tok);
+      return renderPlainProseWithInlineSymbols(tok);
     })
     .join('');
 }
