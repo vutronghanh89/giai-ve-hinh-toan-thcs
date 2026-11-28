@@ -20,11 +20,22 @@
   background: #475569;
 }
 
-/* Tối ưu hiển thị công thức toán KaTeX gọn gàng, sắc nét */
+/* Tối ưu hiển thị công thức toán KaTeX gọn gàng, xuống dòng đúng khung */
+.math-text-block {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
 .math-text-block .katex {
   font-size: 1.03em;
   line-height: 1.42;
   color: inherit;
+}
+
+.math-text-block .katex .text {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-style: normal;
 }
 
 .math-text-block .katex-display {
@@ -35,6 +46,7 @@
 
 .math-line {
   margin-bottom: 0.2rem;
+  white-space: normal;
   word-break: normal;
   overflow-wrap: break-word;
 }
@@ -51,4 +63,9 @@
   display: inline-block;
   white-space: nowrap;
   vertical-align: middle;
+}
+
+.math-inline-wrap {
+  display: inline;
+  white-space: normal;
 }
