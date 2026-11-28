@@ -4,12 +4,91 @@ import katex from 'katex';
 const VN_DIACRITIC_REGEX =
   /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ]/;
 
+function normalizeUnicodeSubSup(str) {
+  return String(str || '')
+    .replace(/₀/g, '_0')
+    .replace(/₁/g, '_1')
+    .replace(/₂/g, '_2')
+    .replace(/₃/g, '_3')
+    .replace(/₄/g, '_4')
+    .replace(/₅/g, '_5')
+    .replace(/₆/g, '_6')
+    .replace(/₇/g, '_7')
+    .replace(/₈/g, '_8')
+    .replace(/₉/g, '_9')
+    .replace(/⁰/g, '^0')
+    .replace(/¹/g, '^1')
+    .replace(/²/g, '^2')
+    .replace(/³/g, '^3')
+    .replace(/⁴/g, '^4')
+    .replace(/⁵/g, '^5')
+    .replace(/⁶/g, '^6')
+    .replace(/⁷/g, '^7')
+    .replace(/⁸/g, '^8')
+    .replace(/⁹/g, '^9');
+}
+
+/**
+ * Chuyển đổi các phép chia dạng a/b hoặc (a + b)/c sang phân số đứng \dfrac{...}{...}
+ */
+function convertSlashFractionsToDfrac(latexStr) {
+  let s = String(latexStr || '');
+  if (!s.includes('/')) return s;
+
+  // Bảo vệ các lệnh \dfrac{...}{...}, \frac{...}{...}, \text{...} có sẵn
+  const slots = [];
+  const stash = (m) => {
+    const tok = `__FRACSLOT_${slots.length}__`;
+    slots.push(m);
+    return tok;
+  };
+
+  s = s.replace(/\\(?:d?frac)\{[^{}]*\}\{[^{}]*\}/g, stash);
+  s = s.replace(/\\text\{[^{}]*\}/g, stash);
+
+  const atomPattern =
+    '(?:__FRACSLOT_\\d+__|[A-Za-z0-9_.,^{}\\\\]+(?:\\s*\\\\(?:cdot|times)\\s*[A-Za-z0-9_.,^{}\\\\]+)*)';
+
+  // 1. Dạng phân số nằm gọn trong ngoặc đơn: (125/3) -> \left(\dfrac{125}{3}\right)
+  s = s.replace(
+    new RegExp(
+      `\\(\\s*(${atomPattern}(?:\\s*[+-]\\s*${atomPattern})*)\\s*\\/\\s*(${atomPattern}(?:\\s*[+-]\\s*${atomPattern})*)\\s*\\)`,
+      'g'
+    ),
+    '\\left(\\dfrac{$1}{$2}\\right)'
+  );
+
+  // 2. Dạng tử hoặc mẫu có ngoặc đơn: (π · R^2 · n) / 360 -> \dfrac{\pi \cdot R^2 \cdot n}{360}
+  let prev;
+  let guard = 0;
+  do {
+    prev = s;
+    s = s
+      .replace(/\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g, '\\dfrac{$1}{$2}')
+      .replace(new RegExp(`\\(([^()]+)\\)\\s*\\/\\s*(${atomPattern})`, 'g'), '\\dfrac{$1}{$2}')
+      .replace(new RegExp(`(${atomPattern})\\s*\\/\\s*\\(([^()]+)\\)`, 'g'), '\\dfrac{$1}{$2}');
+    guard++;
+  } while (s !== prev && guard < 6);
+
+  // 3. Dạng phân số không ngoặc: 125/3, AC/BC, 6 \cdot 8 / 10 -> \dfrac{...}{...}
+  s = s.replace(
+    new RegExp(`(${atomPattern})\\s*\\/\\s*(${atomPattern})`, 'g'),
+    '\\dfrac{$1}{$2}'
+  );
+
+  for (let i = 0; i < 3; i++) {
+    s = s.replace(/__FRACSLOT_(\d+)__/g, (_, idx) => slots[Number(idx)] || '');
+  }
+
+  return s;
+}
+
 /**
  * Chuẩn hóa tiếng Việt & đơn vị đo nằm bên trong dấu $...$
  * để KaTeX KHÔNG bao giờ in nghiêng chữ tiếng Việt hay làm dính liền các từ.
  */
 export function sanitizeLatexVietnameseText(rawLatex) {
-  let s = String(rawLatex || '').trim();
+  let s = normalizeUnicodeSubSup(String(rawLatex || '').trim());
   if (!s) return '';
 
   // 1. Tách các hàm lượng giác viết dính tên góc (VD: \sinB -> \sin B, sinB -> \sin B)
@@ -33,27 +112,29 @@ export function sanitizeLatexVietnameseText(rawLatex) {
 
   // 4. Tách số dính liền đơn vị đo (VD: 24cm -> 24\text{ cm}, 150° -> 150^\circ)
   s = s.replace(
-    /(\d+(?:[.,]\d+)?)\s*(mm|cm|dm|km|m|độ|rad)(?=$|[^A-Za-zÀ-ỹ])/gi,
-    (_, num, unit) => {
+    /(\d+(?:[.,]\d+)?)\s*(mm|cm|dm|km|m|độ|rad)(\^[0-9]+)?(?=$|[^A-Za-zÀ-ỹ])/gi,
+    (_, num, unit, pow) => {
       if (unit.toLowerCase() === 'độ') return `${num}^\\circ`;
-      return `${num}${stash(`\\text{ ${unit}}`)}`;
+      return `${num}${stash(`\\text{ ${unit}}${pow || ''}`)}`;
     }
   );
 
-  // 5. Nhận diện từ tiếng Việt (bao gồm cả từ 1 chữ cái có dấu như: ở, à, ạ, ý, ổ, ế, ...)
+  // Đơn vị nằm trong ngoặc đơn: (cm^2) -> (\text{cm}^2)
+  s = s.replace(
+    /\(\s*(mm|cm|dm|m|km|độ|rad)(\^[0-9]+)?\s*\)/gi,
+    (_, unit, pow) => `(${stash(`\\text{${unit}}${pow || ''}`)})`
+  );
+
+  // 5. Nhận diện từ tiếng Việt (bao gồm cả từ 1 chữ cái có dấu như: ở, à, ạ, ý, ...)
   const isMathIdentifier = (word) => {
     if (!word) return false;
     if (word === 'đpcm' || word === 'ĐPCM') return false;
-    // Bất kỳ từ nào có dấu tiếng Việt (kể cả 1 ký tự như "ở", "à", "ý") đều là tiếng Việt
     if (VN_DIACRITIC_REGEX.test(word)) return false;
-    // 1 chữ cái Latin đơn (A, B, C, x, y, R, r, S, n, ...)
     if (/^[A-Za-z]$/.test(word)) return true;
-    // Tên điểm/đoạn/góc/đa giác viết hoa (AB, BC, ABC, ADME, ...) hoặc hệ trục Oxy, xOy
     if (/^(?:[A-Z]{2,6}|[xyz]O[xyz]|O[xyz]{1,2})$/.test(word)) return true;
     return false;
   };
 
-  // Quét từng token từ / khoảng trắng / ký hiệu để gom các từ tiếng Việt liền nhau thành \text{...}
   const rawTokens = s.split(/(\s+)/);
   const out = [];
   let vnBuffer = [];
@@ -80,7 +161,6 @@ export function sanitizeLatexVietnameseText(rawLatex) {
       continue;
     }
 
-    // Kiểm tra từ tiếng Việt (cho phép 1 ký tự nếu có dấu tiếng Việt, hoặc >= 2 ký tự chữ cái)
     const plainWordMatch = tok.match(/^([([{"']*)([A-Za-zÀ-ỹ]+)([)\]}"'.,;:!?]*)$/);
     if (plainWordMatch) {
       const [, openPunc, coreWord, closePunc] = plainWordMatch;
@@ -100,7 +180,6 @@ export function sanitizeLatexVietnameseText(rawLatex) {
       }
     }
 
-    // Token hiện tại là biểu thức Toán / số / placeholder lệnh LaTeX
     const startsWithMathChar = /^[A-Za-z0-9_\\]/.test(tok);
     flushVnBuffer(startsWithMathChar);
     out.push(tok);
@@ -114,6 +193,9 @@ export function sanitizeLatexVietnameseText(rawLatex) {
   for (let pass = 0; pass < 3; pass++) {
     s = s.replace(/__SLOT_(\d+)__/g, (_, idx) => protectedSlots[Number(idx)] || '');
   }
+
+  // 7. Chuyển đổi các phép chia '/' còn lại thành phân số đứng \dfrac
+  s = convertSlashFractionsToDfrac(s);
 
   return s.replace(/\s+/g, ' ').trim();
 }
@@ -144,10 +226,10 @@ function renderKatexHtml(latex, displayMode = false) {
 }
 
 /**
- * Chuyển đổi cụm ký hiệu toán học viết dạng văn bản thường sang chuẩn LaTeX
+ * Chuyển đổi biểu thức toán học viết dạng văn bản thường sang chuẩn LaTeX
  */
 export function convertPlainMathToLatex(rawExpr) {
-  let s = String(rawExpr || '').trim();
+  let s = normalizeUnicodeSubSup(String(rawExpr || '').trim());
   if (!s) return '';
 
   s = s
@@ -166,11 +248,18 @@ export function convertPlainMathToLatex(rawExpr) {
     .replace(/·/g, ' \\cdot ')
     .replace(/π/g, '\\pi ')
     .replace(/°/g, '^\\circ')
-    .replace(/²/g, '^2')
-    .replace(/³/g, '^3')
-    .replace(/⁴/g, '^4')
     .replace(/√\(([^()]+)\)/g, '\\sqrt{$1}')
     .replace(/√([A-Za-z0-9.,]+)/g, '\\sqrt{$1}');
+
+  s = s.replace(
+    /([A-Za-z])_([A-Za-zÀ-ỹ0-9]+(?:\s+[A-Za-zÀ-ỹ0-9]+){0,2})/g,
+    (_, base, sub) => {
+      if (/^[0-9a-zA-Z]$/.test(sub)) return `${base}_${sub}`;
+      return `${base}_{\\text{${sub.trim()}}}`;
+    }
+  );
+
+  s = convertSlashFractionsToDfrac(s);
 
   return s.replace(/\s+/g, ' ').trim();
 }
@@ -213,8 +302,8 @@ function splitAtomicEqualityChunks(latexExpr) {
 
 /**
  * Kết xuất một khối biểu thức LaTeX thành HTML KaTeX:
- * - Nếu chứa lời văn tiếng Việt dài: cho phép ngắt dòng tự nhiên theo khung chứa.
- * - Nếu là dãy biến đổi toán học thuần túy: giữ liền trên 1 hàng ngang và chỉ xuống dòng ngay trước dấu '=' / '≈' khi chạm mép khung.
+ * - Giữ toàn bộ vế biến đổi trên cùng 1 hàng ngang nếu còn chỗ.
+ * - Chỉ ngắt dòng tại dấu '=' / '≈' khi chạm giới hạn chiều rộng khung.
  */
 function renderLatexSegmentHtml(rawLatex) {
   const cleaned = String(rawLatex || '').trim();
@@ -222,8 +311,7 @@ function renderLatexSegmentHtml(rawLatex) {
 
   const sanitized = sanitizeLatexVietnameseText(cleaned);
 
-  // Nếu biểu thức có chứa nhiều từ tiếng Việt (VD: \text{...}), không ép nowrap toàn khối
-  // để tránh tràn khung chứa trên Đề bài / GT-KL
+  // Nếu biểu thức có chứa nhiều từ tiếng Việt dài, cho phép xuống dòng tự nhiên theo khung
   const textMatches = sanitized.match(/\\text\{[^}]+\}/g) || [];
   const totalVietnameseWords = textMatches.join(' ').trim().split(/\s+/).filter(Boolean).length;
   if (totalVietnameseWords >= 3) {
@@ -248,35 +336,154 @@ function renderLatexSegmentHtml(rawLatex) {
     .join(' ');
 }
 
+const MATH_FUNC_WORDS = new Set(['sin', 'cos', 'tan', 'cot', 'log', 'ln']);
+const UNIT_WORDS = new Set(['mm', 'cm', 'dm', 'km', 'm', 'độ', 'rad']);
+
+function isVietnameseProseToken(token) {
+  const clean = token.replace(/^[([{"']+|[)\]}"'.,;:!?]+$/g, '');
+  if (!clean) return false;
+
+  // Có dấu tiếng Việt (kể cả từ 1 chữ cái như "ở", "à", "ý") -> chắc chắn là tiếng Việt
+  if (VN_DIACRITIC_REGEX.test(clean)) return true;
+
+  // Từ có từ 2 chữ cái trở lên và chứa chữ thường -> tiếng Việt (trừ sin/cos/tan/cot, đơn vị đo, xOy/Oxy)
+  if (clean.length >= 2 && /[a-z]/.test(clean)) {
+    const lower = clean.toLowerCase();
+    if (MATH_FUNC_WORDS.has(lower)) return false;
+    if (UNIT_WORDS.has(lower)) return false;
+    if (/^(?:[xyz]O[xyz]|O[xyz]{1,2})$/.test(clean)) return false;
+    return true;
+  }
+
+  return false;
+}
+
+function isNontrivialMathExpression(expr) {
+  const s = expr.trim();
+  if (!s) return false;
+  // Chứa phân số, dấu bằng/xấp xỉ/bất đẳng thức, phép nhân/cộng/trừ, mũ, chỉ số dưới, ký hiệu hình học/Hy Lạp, hàm lượng giác
+  return (
+    /[=≈<>≤≥≠±×·*/⊥∥⇒⇔△∠π°²³⁴√_^]/.test(s) ||
+    /\b(?:sin|cos|tan|cot|log|ln)\b/.test(s)
+  );
+}
+
 /**
- * Render văn bản thường (nằm NGOÀI dấu $...$) sao cho:
- * - Toàn bộ câu văn tiếng Việt tự động xuống dòng chuẩn xác theo độ rộng khung chứa (không bao giờ tràn ngang).
- * - Các ký hiệu toán rời rạc (150°, cm², △ABC, ∠ABC, ⊥, ∥, π, ≈, √...) được kết xuất đẹp mắt.
+ * Tách phần văn bản thường (ngoài dấu $...$) thành:
+ * - Lời văn tiếng Việt (tự động xuống dòng chuẩn xác theo khung chứa)
+ * - Biểu thức toán học (kết xuất bằng KaTeX với phân số đứng \dfrac, số mũ, ký hiệu chuẩn xác)
  */
-function renderPlainProseWithInlineSymbols(plainText) {
+function renderPlainTextWithSmartMath(plainText) {
   const text = String(plainText || '');
   if (!text) return '';
 
-  // Chỉ bắt các cụm ký hiệu toán học cục bộ (không nuốt cả câu văn tiếng Việt)
-  const inlineMathPattern =
-    /(△\s*[A-Za-z0-9]+|∠\s*[A-Za-z0-9]{2,4}|\b[A-Z]{1,3}\s*[⊥∥]\s*[A-Z]{1,3}\b|\b(?:mm|cm|dm|km|m)[²³⁴]|\d+(?:[.,]\d+)?°|√\([^()]+\)|√[A-Za-z0-9.,]+|[⊥∥⇒⇔≈≤≥≠π])/g;
+  const rawParts = text.split(/(\s+)/);
+  const segments = [];
+  let bufType = null; // 'prose' | 'math'
+  let buf = '';
 
-  const parts = text.split(inlineMathPattern);
-  return parts
-    .map((part, idx) => {
-      if (!part) return '';
-      if (idx % 2 === 1) {
-        // Đơn vị có số mũ như cm² -> giữ font thẳng đẹp mắt
-        const unitPowMatch = part.match(/^(mm|cm|dm|km|m)([²³⁴])$/);
-        if (unitPowMatch) {
-          const exp = { '²': '2', '³': '3', '⁴': '4' }[unitPowMatch[2]] || '';
-          return `${escapeHtml(unitPowMatch[1])}<sup>${exp}</sup>`;
+  const flush = () => {
+    if (!buf) return;
+    segments.push({ type: bufType, value: buf });
+    buf = '';
+    bufType = null;
+  };
+
+  for (let i = 0; i < rawParts.length; i++) {
+    const part = rawParts[i];
+    if (!part) continue;
+
+    if (/^\s+$/.test(part)) {
+      if (bufType) buf += part;
+      else segments.push({ type: 'prose', value: part });
+      continue;
+    }
+
+    // Dấu câu kết thúc mệnh đề tiếng Việt (':', ';', '!', '?', hoặc '.' đứng cuối/trước khoảng trắng)
+    const isSentenceBreak = /[:;!?]$/.test(part) || /\.$/.test(part);
+    const isProse = isVietnameseProseToken(part);
+
+    if (isProse) {
+      // Nếu là đơn vị đo (cm, cm², m...) đi ngay sau biểu thức toán thì giữ chung với khối toán
+      const coreUnit = part.replace(/^[([{"']+|[)\]}"'.,;:!?]+$/g, '');
+      const unitBase = coreUnit.replace(/[²³⁴^0-9]+$/g, '').toLowerCase();
+      if (bufType === 'math' && UNIT_WORDS.has(unitBase)) {
+        const trailingPunctMatch = part.match(/([.?!:;]+)$/);
+        if (trailingPunctMatch) {
+          const mathPart = part.slice(0, -trailingPunctMatch[1].length);
+          buf += mathPart;
+          flush();
+          bufType = 'prose';
+          buf = trailingPunctMatch[1];
+        } else {
+          buf += part;
         }
-        const latex = convertPlainMathToLatex(part);
-        const html = renderKatexHtml(latex, false);
-        if (html) return `<span class="math-atomic">${html}</span>`;
+        continue;
       }
-      return escapeHtml(part);
+
+      if (bufType === 'math') flush();
+      bufType = 'prose';
+      buf += part;
+      continue;
+    }
+
+    // Token hiện tại là ký hiệu toán / số / biến / phân số / ngoặc
+    // Tách dấu ngoặc mở đầu nếu đang ở giữa câu tiếng Việt (VD: "(R = 24 cm" -> "(" thuộc prose, "R = 24 cm" thuộc math)
+    let workPart = part;
+    if (bufType === 'prose' && /^\(+/.test(workPart) && !/^\([^()]+\//.test(workPart)) {
+      const leadParens = workPart.match(/^\(+/)[0];
+      buf += leadParens;
+      workPart = workPart.slice(leadParens.length);
+      if (!workPart) continue;
+    }
+
+    if (bufType === 'prose') flush();
+    bufType = 'math';
+
+    if (isSentenceBreak) {
+      const m = workPart.match(/^(.*?)([.,;:!?]+)$/);
+      if (m && m[1]) {
+        buf += m[1];
+        flush();
+        bufType = 'prose';
+        buf = m[2];
+      } else {
+        buf += workPart;
+        flush();
+      }
+    } else {
+      buf += workPart;
+    }
+  }
+  flush();
+
+  return segments
+    .map((seg) => {
+      if (seg.type === 'math') {
+        const leadSpace = seg.value.match(/^\s*/)[0];
+        const trailSpace = seg.value.match(/\s*$/)[0];
+        const core = seg.value.trim();
+
+        // Tách dấu ngoặc đóng thừa ở cuối nếu trong biểu thức không có ngoặc mở tương ứng
+        let cleanCore = core;
+        let extraTrail = '';
+        const openCount = (cleanCore.match(/\(/g) || []).length;
+        const closeCount = (cleanCore.match(/\)/g) || []).length;
+        if (closeCount > openCount) {
+          const diff = closeCount - openCount;
+          const tailMatch = cleanCore.match(new RegExp(`(\\){1,${diff}})$`));
+          if (tailMatch) {
+            extraTrail = tailMatch[1];
+            cleanCore = cleanCore.slice(0, -extraTrail.length);
+          }
+        }
+
+        if (isNontrivialMathExpression(cleanCore)) {
+          const latex = convertPlainMathToLatex(cleanCore);
+          return `${escapeHtml(leadSpace)}${renderLatexSegmentHtml(latex)}${escapeHtml(extraTrail + trailSpace)}`;
+        }
+      }
+      return escapeHtml(seg.value);
     })
     .join('');
 }
@@ -316,7 +523,7 @@ function renderSingleLineHtml(line) {
         const inner = tok.slice(1, -1);
         return renderLatexSegmentHtml(inner);
       }
-      return renderPlainProseWithInlineSymbols(tok);
+      return renderPlainTextWithSmartMath(tok);
     })
     .join('');
 }
@@ -344,7 +551,7 @@ export function renderMathBlockHtml(text, { inline = false } = {}) {
       const before = line.slice(0, colonIdx + 1).trim();
       const after = line.slice(colonIdx + 1).trim();
       const hasComplexFormula =
-        /\\d?frac|\\sqrt/.test(after) || (after.match(/[=≈]/g) || []).length >= 2;
+        /\\d?frac|\\sqrt|\//.test(after) || (after.match(/[=≈]/g) || []).length >= 2;
 
       if (hasComplexFormula) {
         finalLines.push(before);
@@ -362,7 +569,7 @@ export function renderMathBlockHtml(text, { inline = false } = {}) {
 
   return finalLines
     .map((ln) => {
-      const hasFraction = /\\d?frac/.test(ln);
+      const hasFraction = /\\d?frac|\//.test(ln);
       const cls = hasFraction ? 'math-line math-eq-line' : 'math-line';
       return `<div class="${cls}">${renderSingleLineHtml(ln)}</div>`;
     })
