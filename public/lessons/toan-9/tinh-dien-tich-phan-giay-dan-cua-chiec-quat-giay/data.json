@@ -1,95 +1,23 @@
 {
   "id": "toan-9-tinh-dien-tich-phan-giay-dan-cua-chiec-quat-giay",
-  "hasStaticAudio": true,
-  "audioFile": "full_audio.mp3",
-  "audioTimeline": [
-    {
-      "stepIndex": 0,
-      "startSec": 0,
-      "endSec": 14.026
-    },
-    {
-      "stepIndex": 1,
-      "startSec": 14.026,
-      "endSec": 26.156
-    },
-    {
-      "stepIndex": 2,
-      "startSec": 26.156,
-      "endSec": 36.798
-    },
-    {
-      "stepIndex": 3,
-      "startSec": 36.798,
-      "endSec": 55.36
-    },
-    {
-      "stepIndex": 4,
-      "startSec": 55.36,
-      "endSec": 78.986
-    },
-    {
-      "stepIndex": 5,
-      "startSec": 78.986,
-      "endSec": 100.428
-    },
-    {
-      "stepIndex": 6,
-      "startSec": 100.428,
-      "endSec": 117.478
-    },
-    {
-      "stepIndex": 7,
-      "startSec": 117.478,
-      "endSec": 133.88
-    },
-    {
-      "stepIndex": 8,
-      "startSec": 133.88,
-      "endSec": 154.976
-    }
-  ],
   "grade": "Toán 9",
-  "topic": "Diện tích hình quạt tròn và hình vành khuyên",
+  "topic": "Độ dài cung tròn & Diện tích hình quạt tròn",
   "title": "Tính diện tích phần giấy dán của chiếc quạt giấy",
-  "problemText": "Câu 22. Một chiếc quạt giấy khi xòe ra hoàn toàn có dạng một hình quạt tròn bán kính 24 cm và góc ở tâm bằng 150°. Phần giấy dán của quạt là một hình vành khuyên giới hạn bởi hai cung tròn đồng tâm có bán kính lần lượt là 24 cm và 10 cm ứng với góc ở tâm 150°. Tính diện tích phần giấy dán của chiếc quạt đó theo đơn vị cm² (lấy π ≈ 3,14, kết quả làm tròn đến hàng đơn vị).",
+  "hasStaticAudio": false,
+  "problemText": "Một chiếc quạt giấy khi xòe ra hoàn toàn có dạng một hình quạt tròn bán kính 24 cm và góc ở tâm bằng 150°. Phần giấy dán của quạt là một hình vành khuyên giới hạn bởi hai cung tròn đồng tâm có bán kính lần lượt là 24 cm và 10 cm ứng với góc ở tâm 150°. Tính diện tích phần giấy dán của chiếc quạt đó theo đơn vị cm² (lấy π ≈ 3,14, kết quả làm tròn đến hàng đơn vị).",
   "given": [
-    "Hình quạt tròn tâm O, bán kính R = 24 cm, góc ở tâm 150°",
-    "Phần giấy dán là phần hình vành khuyên giới hạn bởi hai cung tròn đồng tâm O, bán kính R = 24 cm và r = 10 cm, góc ở tâm 150°",
-    "π ≈ 3,14"
+    "Hình quạt tròn tâm O, bán kính $R = 24\\text{ cm}$, góc ở tâm $150^\\circ$",
+    "Phần giấy dán là phần hình vành khuyên giới hạn bởi hai cung tròn đồng tâm O, bán kính $R = 24\\text{ cm}$ và $r = 10\\text{ cm}$, góc ở tâm $150^\\circ$",
+    "$\\pi \\approx 3{,}14$"
   ],
   "prove": [
     "Tính diện tích phần giấy dán của chiếc quạt đó theo đơn vị cm² (làm tròn đến hàng đơn vị)"
   ],
   "drawingSteps": [
     {
-      "caption": "Dùng thước thẳng vẽ nan quạt OA dài 24 cm",
-      "voiceExplanation": "Đề bài cho một chiếc quạt giấy khi xòe ra hoàn toàn có dạng một hình quạt tròn bán kính hai mươi tư xăng-ti-mét và góc ở tâm bằng một trăm năm mươi độ. Trước tiên, ta chọn tâm O và dùng thước thẳng kẻ bán kính O A dài hai mươi tư xăng-ti-mét.",
-      "tool": "ruler",
-      "highlightSegments": [
-        "O-A"
-      ],
-      "highlightPoints": [
-        "O",
-        "A"
-      ]
-    },
-    {
-      "caption": "Dùng thước đo độ xác định góc AOB = 150° và vẽ nan quạt OB = 24 cm",
-      "voiceExplanation": "Tiếp theo, vì góc ở tâm của chiếc quạt khi xòe ra hoàn toàn bằng một trăm năm mươi độ, ta đặt thước đo độ tại tâm O, xác định góc A O B bằng một trăm năm mươi độ rồi kẻ bán kính O B dài hai mươi tư xăng-ti-mét.",
+      "caption": "Vẽ tâm O và hai bán kính OA, OB tạo thành góc ở tâm 150°.",
+      "voiceExplanation": "Bước một, ta lấy điểm O làm tâm và vẽ hai bán kính O A, O B tạo với nhau góc 150 độ.",
       "tool": "protractor",
-      "highlightSegments": [
-        "O-B"
-      ],
-      "highlightPoints": [
-        "O",
-        "B"
-      ]
-    },
-    {
-      "caption": "Dùng compa tâm O, bán kính R = 24 cm vẽ cung tròn lớn AB",
-      "voiceExplanation": "Sau đó, ta dùng compa đặt mũi nhọn tại tâm O, mở khẩu độ bằng bán kính O A là hai mươi tư xăng-ti-mét và quay cung tròn lớn A B để hoàn thiện đường viền ngoài của chiếc quạt.",
-      "tool": "compass",
       "highlightSegments": [
         "O-A",
         "O-B"
@@ -101,15 +29,14 @@
       ]
     },
     {
-      "caption": "Lấy C trên OA, D trên OB với OC = OD = 10 cm và dùng compa vẽ cung tròn nhỏ CD",
-      "voiceExplanation": "Cuối cùng, phần giấy dán được giới hạn bởi hai cung tròn đồng tâm có bán kính lần lượt là hai mươi tư xăng-ti-mét và mười xăng-ti-mét. Trên O A và O B ta lần lượt lấy hai điểm C và D sao cho O C bằng O D bằng mười xăng-ti-mét, rồi dùng compa tâm O, bán kính mười xăng-ti-mét quay cung tròn nhỏ C D.",
+      "caption": "Quay cung tròn lớn tâm O bán kính R = 24 cm và cung tròn nhỏ bán kính r = 10 cm.",
+      "voiceExplanation": "Bước hai, dùng compa quay cung tròn lớn bán kính 24 xen ti mét và cung tròn nhỏ bán kính 10 xen ti mét, hoàn thiện hình chiếc quạt giấy.",
       "tool": "compass",
       "highlightSegments": [
-        "O-C",
-        "O-D"
+        "C-A",
+        "D-B"
       ],
       "highlightPoints": [
-        "O",
         "C",
         "D"
       ]
@@ -123,51 +50,51 @@
         "x": 0,
         "y": 95,
         "dx": 0,
-        "dy": 20,
+        "dy": 18,
         "drawStep": 0
       },
       {
         "id": "A",
         "label": "A",
-        "x": -159.38,
-        "y": 52.29,
+        "x": -154,
+        "y": 54,
         "dx": -16,
-        "dy": 8,
+        "dy": 10,
         "drawStep": 0
       },
       {
         "id": "B",
         "label": "B",
-        "x": 159.38,
-        "y": 52.29,
-        "dx": 14,
-        "dy": 8,
-        "drawStep": 1
+        "x": 154,
+        "y": 54,
+        "dx": 16,
+        "dy": 10,
+        "drawStep": 0
       },
       {
         "id": "C",
         "label": "C",
-        "x": -66.41,
-        "y": 77.21,
-        "dx": -10,
-        "dy": 18,
-        "drawStep": 3
+        "x": -64,
+        "y": 78,
+        "dx": -12,
+        "dy": 16,
+        "drawStep": 1
       },
       {
         "id": "D",
         "label": "D",
-        "x": 66.41,
-        "y": 77.21,
-        "dx": 10,
-        "dy": 18,
-        "drawStep": 3
+        "x": 64,
+        "y": 78,
+        "dx": 12,
+        "dy": 16,
+        "drawStep": 1
       }
     ],
     "segments": [
       {
         "from": "O",
         "to": "A",
-        "style": "solid",
+        "style": "dashed",
         "color": "main",
         "ticks": 0,
         "drawStep": 0
@@ -175,26 +102,10 @@
       {
         "from": "O",
         "to": "B",
-        "style": "solid",
+        "style": "dashed",
         "color": "main",
         "ticks": 0,
-        "drawStep": 1
-      },
-      {
-        "from": "O",
-        "to": "C",
-        "style": "solid",
-        "color": "main",
-        "ticks": 0,
-        "drawStep": 3
-      },
-      {
-        "from": "O",
-        "to": "D",
-        "style": "solid",
-        "color": "main",
-        "ticks": 0,
-        "drawStep": 3
+        "drawStep": 0
       },
       {
         "from": "C",
@@ -202,7 +113,7 @@
         "style": "solid",
         "color": "accent",
         "ticks": 0,
-        "drawStep": 3
+        "drawStep": 1
       },
       {
         "from": "D",
@@ -210,58 +121,46 @@
         "style": "solid",
         "color": "accent",
         "ticks": 0,
-        "drawStep": 3
+        "drawStep": 1
       }
     ],
     "circles": [
       {
         "center": "O",
-        "radius": 165,
+        "radius": 160,
+        "startAngle": 3.401592653589793,
+        "endAngle": 6.0231853071795864,
         "style": "solid",
-        "color": "main",
-        "drawStep": 2
+        "color": "accent",
+        "drawStep": 1
       },
       {
         "center": "O",
-        "radius": 68.75,
+        "radius": 67,
+        "startAngle": 3.401592653589793,
+        "endAngle": 6.0231853071795864,
         "style": "solid",
-        "color": "accent",
-        "drawStep": 3
+        "color": "emerald",
+        "drawStep": 1
       }
     ],
     "rightAngles": [],
     "angleArcs": [
       {
         "vertex": "O",
-        "p1": "A",
-        "p2": "B",
-        "radius": 34,
+        "p1": "B",
+        "p2": "A",
+        "radius": 28,
         "label": "150°",
-        "color": "emerald",
-        "drawStep": 1
+        "color": "accent",
+        "drawStep": 0
       }
     ]
   },
   "solutionSteps": [
     {
-      "lineText": "Phân tích: Diện tích phần giấy dán bằng hiệu diện tích hình quạt tròn lớn (R = 24 cm, góc ở tâm 150°) và hình quạt tròn nhỏ không dán giấy (r = 10 cm, góc ở tâm 150°).",
-      "voiceExplanation": "Trước khi đi vào lời giải chi tiết, cô trò mình cùng phân tích nhanh bài toán nhé. Để tính diện tích phần giấy dán của chiếc quạt, ta nhận thấy phần giấy dán chính là phần hình vành khuyên ứng với góc ở tâm một trăm năm mươi độ. Vì vậy, ta chỉ cần lấy diện tích hình quạt tròn lớn bán kính hai mươi tư xăng-ti-mét trừ đi diện tích hình quạt tròn nhỏ không dán giấy bán kính mười xăng-ti-mét, đều ứng với góc ở tâm một trăm năm mươi độ.",
-      "highlightSegments": [
-        "C-A",
-        "D-B"
-      ],
-      "highlightPoints": [
-        "O",
-        "A",
-        "B",
-        "C",
-        "D"
-      ],
-      "highlightPolygons": []
-    },
-    {
-      "lineText": "Diện tích hình quạt tròn lớn (bán kính R = 24 cm, góc ở tâm n = 150°): S₁ = (π · R² · n) / 360 = (π · 24² · 150) / 360 = 240π (cm²)",
-      "voiceExplanation": "Bước thứ nhất, ta tính diện tích hình quạt tròn lớn có bán kính R bằng hai mươi tư xăng-ti-mét và góc ở tâm n bằng một trăm năm mươi độ. Áp dụng công thức diện tích hình quạt tròn, ta có S một bằng pi nhân R bình phương nhân n chia ba trăm sáu mươi, thay số được pi nhân hai mươi tư bình phương nhân một trăm năm mươi chia ba trăm sáu mươi, rút gọn bằng hai trăm bốn mươi pi xăng-ti-mét vuông.",
+      "lineText": "Phân tích: Diện tích phần giấy dán bằng hiệu diện tích hình quạt tròn lớn ($R = 24\\text{ cm}$, góc ở tâm $150^\\circ$) và hình quạt tròn nhỏ không dán giấy ($r = 10\\text{ cm}$, góc ở tâm $150^\\circ$).",
+      "voiceExplanation": "Diện tích phần giấy dán bằng hiệu diện tích hình quạt tròn lớn bán kính 24 xen ti mét và hình quạt tròn nhỏ không dán giấy bán kính 10 xen ti mét.",
       "highlightSegments": [
         "O-A",
         "O-B"
@@ -274,8 +173,21 @@
       "highlightPolygons": []
     },
     {
-      "lineText": "Diện tích hình quạt tròn nhỏ không dán giấy (bán kính r = 10 cm, góc ở tâm n = 150°): S₂ = (π · r² · n) / 360 = (π · 10² · 150) / 360 = (125/3)π (cm²)",
-      "voiceExplanation": "Bước thứ hai, ta tính diện tích hình quạt tròn nhỏ phần nan quạt không dán giấy có bán kính r bằng mười xăng-ti-mét và góc ở tâm n bằng một trăm năm mươi độ. Ta có S hai bằng pi nhân mười bình phương nhân một trăm năm mươi chia ba trăm sáu mươi, rút gọn được một trăm hai mươi lăm phần ba pi xăng-ti-mét vuông.",
+      "lineText": "Diện tích hình quạt tròn lớn (bán kính $R = 24\\text{ cm}$, góc ở tâm $n = 150^\\circ$): $S_1 = \\dfrac{\\pi \\cdot R^2 \\cdot n}{360} = \\dfrac{\\pi \\cdot 24^2 \\cdot 150}{360} = 240\\pi\\ (\\text{cm}^2)$",
+      "voiceExplanation": "Diện tích hình quạt tròn lớn S 1 bằng pi nhân R bình phương nhân n phần 360, bằng pi nhân 24 bình phương nhân 150 phần 360, bằng 240 pi xen ti mét vuông.",
+      "highlightSegments": [
+        "C-A",
+        "D-B"
+      ],
+      "highlightPoints": [
+        "A",
+        "B"
+      ],
+      "highlightPolygons": []
+    },
+    {
+      "lineText": "Diện tích hình quạt tròn nhỏ không dán giấy (bán kính $r = 10\\text{ cm}$, góc ở tâm $n = 150^\\circ$): $S_2 = \\dfrac{\\pi \\cdot r^2 \\cdot n}{360} = \\dfrac{\\pi \\cdot 10^2 \\cdot 150}{360} = \\dfrac{125}{3}\\pi\\ (\\text{cm}^2)$",
+      "voiceExplanation": "Diện tích hình quạt tròn nhỏ không dán giấy S 2 bằng pi nhân r bình phương nhân n phần 360, bằng pi nhân 10 bình phương nhân 150 phần 360, bằng 125 phần 3 pi xen ti mét vuông.",
       "highlightSegments": [
         "O-C",
         "O-D"
@@ -288,8 +200,8 @@
       "highlightPolygons": []
     },
     {
-      "lineText": "Diện tích phần giấy dán của chiếc quạt là: S = S₁ − S₂ = 240π − (125/3)π = (595/3)π (cm²)",
-      "voiceExplanation": "Bước thứ ba, ta lấy diện tích hình quạt tròn lớn trừ đi diện tích hình quạt tròn nhỏ để tìm diện tích phần giấy dán. Ta có S bằng S một trừ S hai, bằng hai trăm bốn mươi pi trừ một trăm hai mươi lăm phần ba pi, quy đồng và rút gọn được năm trăm chín mươi lăm phần ba pi xăng-ti-mét vuông.",
+      "lineText": "Diện tích phần giấy dán của chiếc quạt là: $S = S_1 - S_2 = 240\\pi - \\dfrac{125}{3}\\pi = \\dfrac{595}{3}\\pi\\ (\\text{cm}^2)$",
+      "voiceExplanation": "Diện tích phần giấy dán của chiếc quạt là S bằng S 1 trừ S 2, bằng 240 pi trừ 125 phần 3 pi, bằng 595 phần 3 pi xen ti mét vuông.",
       "highlightSegments": [
         "C-A",
         "D-B"
@@ -303,8 +215,8 @@
       "highlightPolygons": []
     },
     {
-      "lineText": "Thay π ≈ 3,14 ta được: S ≈ (595 · 3,14) / 3 ≈ 622,77 ≈ 623 (cm²). Vậy diện tích phần giấy dán khoảng 623 cm².",
-      "voiceExplanation": "Cuối cùng, thay pi xấp xỉ ba phẩy mười bốn vào biểu thức trên, ta được S xấp xỉ năm trăm chín mươi lăm nhân ba phẩy mười bốn chia ba, bằng khoảng sáu trăm hai mươi hai phẩy bảy mươi bảy xăng-ti-mét vuông. Làm tròn kết quả đến hàng đơn vị, ta được sáu trăm hai mươi ba xăng-ti-mét vuông. Vậy diện tích phần giấy dán của chiếc quạt đó khoảng sáu trăm hai mươi ba xăng-ti-mét vuông.",
+      "lineText": "Thay $\\pi \\approx 3{,}14$ ta được: $S \\approx \\dfrac{595 \\cdot 3{,}14}{3} \\approx 622{,}77 \\approx 623\\ (\\text{cm}^2)$. Vậy diện tích phần giấy dán khoảng 623 cm².",
+      "voiceExplanation": "Thay pi xấp xỉ 3 phẩy 14 ta được S xấp xỉ 595 nhân 3 phẩy 14 phần 3, xấp xỉ 622 phẩy 77, làm tròn đến hàng đơn vị bằng 623 xen ti mét vuông.",
       "highlightSegments": [
         "C-A",
         "D-B"
@@ -319,5 +231,7 @@
     }
   ],
   "audioBasePath": "/lessons/toan-9/tinh-dien-tich-phan-giay-dan-cua-chiec-quat-giay/audio",
-  "updatedAt": "2026-11-27T16:38:43.617Z"
+  "audioFile": "",
+  "audioTimeline": [],
+  "updatedAt": "2026-11-28T15:30:01.353Z"
 }

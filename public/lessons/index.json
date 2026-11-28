@@ -2,13 +2,13 @@
   {
     "id": "toan-9-tinh-dien-tich-phan-giay-dan-cua-chiec-quat-giay",
     "grade": "Toán 9",
-    "topic": "Diện tích hình quạt tròn và hình vành khuyên",
+    "topic": "Độ dài cung tròn & Diện tích hình quạt tròn",
     "title": "Tính diện tích phần giấy dán của chiếc quạt giấy",
     "path": "/lessons/toan-9/tinh-dien-tich-phan-giay-dan-cua-chiec-quat-giay/data.json",
     "audioBasePath": "/lessons/toan-9/tinh-dien-tich-phan-giay-dan-cua-chiec-quat-giay/audio",
-    "audioFile": "full_audio.mp3",
-    "hasStaticAudio": true,
-    "updatedAt": "2026-11-27T16:38:43.617Z"
+    "audioFile": "",
+    "hasStaticAudio": false,
+    "updatedAt": "2026-11-28T15:30:01.353Z"
   },
   {
     "id": "toan-9-tinh-canh-duong-cao-va-ti-so-luong-giac-trong-tam-giac-vuong",
