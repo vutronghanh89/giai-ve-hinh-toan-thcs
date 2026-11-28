@@ -106,7 +106,96 @@ function drawVirtualTool(ctx, tool, targetX, targetY, angleRad = 0) {
 }
 
 /**
- * Hàm vẽ hình học dùng chung 100% giữa giao diện Web và bộ xuất Video MP4.
+ * Tính chính xác vùng bao (bounding box) của toàn bộ hình vẽ:
+ * gồm mọi điểm, nhãn điểm, cung tròn/đường tròn và phần kéo dài của tia/đường thẳng
+ * để tự động căn tâm và thu phóng vừa khít khung hình, không bao giờ tràn viền.
+ */
+export function computeGeometryBounds(geometry, includeLabels = true) {
+  const points = Array.isArray(geometry?.points) ? geometry.points : [];
+  const segments = Array.isArray(geometry?.segments) ? geometry.segments : [];
+  const circles = Array.isArray(geometry?.circles) ? geometry.circles : [];
+
+  const pointMap = new Map();
+  points.forEach((p) => pointMap.set(p.id, p));
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  const includeXY = (x, y, pad = 0) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (x - pad < minX) minX = x - pad;
+    if (x + pad > maxX) maxX = x + pad;
+    if (y - pad < minY) minY = y - pad;
+    if (y + pad > maxY) maxY = y + pad;
+  };
+
+  points.forEach((pt) => {
+    includeXY(pt.x, pt.y, 10);
+    if (includeLabels && pt.label) {
+      const lx = pt.x + (pt.dx || 0);
+      const ly = pt.y + (pt.dy || -14);
+      includeXY(lx, ly, 16);
+    }
+  });
+
+  segments.forEach((seg) => {
+    const p1 = pointMap.get(seg.from);
+    const p2 = pointMap.get(seg.to);
+    if (!p1 || !p2) return;
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+
+    if (seg.type === 'ray') {
+      includeXY(p2.x + ux * 26, p2.y + uy * 26, 8);
+    } else if (seg.type === 'line') {
+      includeXY(p1.x - ux * 26, p1.y - uy * 26, 8);
+      includeXY(p2.x + ux * 26, p2.y + uy * 26, 8);
+    }
+  });
+
+  circles.forEach((c) => {
+    const center = pointMap.get(c.center);
+    if (!center) return;
+    const r = Math.max(1, Number(c.radius) || 0);
+    const startAng = typeof c.startAngle === 'number' ? c.startAngle : 0;
+    const endAng = typeof c.endAngle === 'number' ? c.endAngle : Math.PI * 2;
+    const span = endAng - startAng;
+
+    if (Math.abs(span) >= Math.PI * 1.99) {
+      includeXY(center.x - r, center.y - r, 8);
+      includeXY(center.x + r, center.y + r, 8);
+    } else {
+      const steps = 36;
+      for (let i = 0; i <= steps; i++) {
+        const ang = startAng + (span * i) / steps;
+        includeXY(center.x + Math.cos(ang) * r, center.y + Math.sin(ang) * r, 8);
+      }
+    }
+  });
+
+  if (!Number.isFinite(minX) || !Number.isFinite(maxX) || !Number.isFinite(minY) || !Number.isFinite(maxY)) {
+    return { minX: -160, maxX: 160, minY: -120, maxY: 120, cx: 0, cy: 0, width: 320, height: 240 };
+  }
+
+  return {
+    minX,
+    maxX,
+    minY,
+    maxY,
+    cx: (minX + maxX) / 2,
+    cy: (minY + maxY) / 2,
+    width: Math.max(80, maxX - minX),
+    height: Math.max(80, maxY - minY)
+  };
+}
+
+/**
+ * Hàm kết xuất toàn bộ khung hình học lên Canvas (dùng chung cho giao diện chính & xuất video)
  */
 export function renderGeometryScene(
   ctx,
@@ -121,48 +210,59 @@ export function renderGeometryScene(
     drawProgress = 1,
     zoom = 1,
     showGrid = true,
-    showLabels = true
+    showLabels = true,
+    padTop = 46,
+    padBottom = 18,
+    padX = 24
   }
 ) {
-  ctx.save();
   ctx.fillStyle = '#0b1120';
   ctx.fillRect(0, 0, W, H);
 
-  const baseScale = Math.min(W / 440, H / 340) * zoom;
+  const bounds = computeGeometryBounds(geometry, showLabels);
+  const availW = Math.max(120, W - padX * 2);
+  const availH = Math.max(120, H - padTop - padBottom);
+  const fitScale = Math.min(availW / bounds.width, availH / bounds.height);
+  const effectiveScale = fitScale * zoom;
 
-  ctx.translate(W / 2, H / 2);
+  const centerScreenX = W / 2;
+  const centerScreenY = padTop + availH / 2;
+
+  ctx.save();
 
   if (showGrid) {
-    const stepPx = 25 * baseScale;
-    ctx.strokeStyle = 'rgba(51, 65, 85, 0.25)';
+    const stepPx = Math.max(16, 26 * effectiveScale);
+    ctx.strokeStyle = 'rgba(51, 65, 85, 0.24)';
     ctx.lineWidth = 1;
-    for (let x = 0; x < W / 2; x += stepPx) {
+    for (let x = centerScreenX; x < W; x += stepPx) {
       ctx.beginPath();
-      ctx.moveTo(x, -H / 2);
-      ctx.lineTo(x, H / 2);
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
       ctx.stroke();
-      if (x > 0) {
-        ctx.beginPath();
-        ctx.moveTo(-x, -H / 2);
-        ctx.lineTo(-x, H / 2);
-        ctx.stroke();
-      }
     }
-    for (let y = 0; y < H / 2; y += stepPx) {
+    for (let x = centerScreenX - stepPx; x > 0; x -= stepPx) {
       ctx.beginPath();
-      ctx.moveTo(-W / 2, y);
-      ctx.lineTo(W / 2, y);
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
       ctx.stroke();
-      if (y > 0) {
-        ctx.beginPath();
-        ctx.moveTo(-W / 2, -y);
-        ctx.lineTo(W / 2, -y);
-        ctx.stroke();
-      }
+    }
+    for (let y = centerScreenY; y < H; y += stepPx) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+    for (let y = centerScreenY - stepPx; y > 0; y -= stepPx) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
     }
   }
 
-  ctx.scale(baseScale, baseScale);
+  ctx.translate(centerScreenX, centerScreenY);
+  ctx.scale(effectiveScale, effectiveScale);
+  ctx.translate(-bounds.cx, -bounds.cy);
 
   const points = Array.isArray(geometry?.points) ? geometry.points : [];
   const segments = Array.isArray(geometry?.segments) ? geometry.segments : [];
@@ -193,7 +293,6 @@ export function renderGeometryScene(
     ? activeStepConfig.highlightRightAngles
     : [];
 
-  // 1. Tô đa giác được nhấn mạnh trong bước giải
   hlPolygons.forEach((poly) => {
     const pts = (poly.points || []).map((id) => pointMap.get(id)).filter(Boolean);
     if (pts.length >= 3) {
@@ -215,7 +314,6 @@ export function renderGeometryScene(
 
   let toolAnchor = null;
 
-  // 2. Vẽ đường tròn / cung tròn
   circles.forEach((c) => {
     const dStep = Number(c.drawStep) || 0;
     if (dStep > maxDrawStep) return;
@@ -232,7 +330,7 @@ export function renderGeometryScene(
 
     ctx.save();
     ctx.strokeStyle = COLOR_MAP[c.color] || COLOR_MAP.main;
-    ctx.lineWidth = isCurrentStep ? 2.2 : 1.6;
+    ctx.lineWidth = isCurrentStep ? 2.2 : 1.7;
     if (c.style === 'dashed') ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.arc(center.x, center.y, c.radius, startAng, currentEndAng, false);
@@ -248,7 +346,6 @@ export function renderGeometryScene(
     }
   });
 
-  // 3. Vẽ đoạn thẳng / tia / đường thẳng
   segments.forEach((seg) => {
     const dStep = Number(seg.drawStep) || 0;
     if (dStep > maxDrawStep) return;
@@ -335,7 +432,6 @@ export function renderGeometryScene(
     }
   });
 
-  // 4. Vẽ ký hiệu góc vuông
   rightAngles.forEach((ra) => {
     const dStep = Number(ra.drawStep) || 0;
     if (dStep > maxDrawStep) return;
@@ -355,21 +451,29 @@ export function renderGeometryScene(
     const u2y = p2.y - v.y;
     const l2 = Math.hypot(u2x, u2y) || 1;
 
-    const size = 11;
-    const ax = (u1x / l1) * size;
-    const ay = (u1y / l1) * size;
-    const bx = (u2x / l2) * size;
-    const by = (u2y / l2) * size;
+    const sz = 11;
+    const ax = (u1x / l1) * sz;
+    const ay = (u1y / l1) * sz;
+    const bx = (u2x / l2) * sz;
+    const by = (u2y / l2) * sz;
 
     const isHl = hlRightAngles.some(
-      (h) =>
-        h.vertex === ra.vertex &&
-        ((h.p1 === ra.p1 && h.p2 === ra.p2) || (h.p1 === ra.p2 && h.p2 === ra.p1))
+      (h) => String(h.vertex || h) === String(ra.vertex)
     );
 
     ctx.save();
     ctx.strokeStyle = isHl ? '#34d399' : '#38bdf8';
-    ctx.lineWidth = isHl ? 2.2 : 1.5;
+    ctx.lineWidth = isHl ? 2.5 : 1.6;
+    if (isHl) {
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.25)';
+      ctx.beginPath();
+      ctx.moveTo(v.x, v.y);
+      ctx.lineTo(v.x + ax, v.y + ay);
+      ctx.lineTo(v.x + ax + bx, v.y + ay + by);
+      ctx.lineTo(v.x + bx, v.y + by);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.beginPath();
     ctx.moveTo(v.x + ax, v.y + ay);
     ctx.lineTo(v.x + ax + bx, v.y + ay + by);
@@ -378,7 +482,6 @@ export function renderGeometryScene(
     ctx.restore();
   });
 
-  // 5. Vẽ cung góc
   angleArcs.forEach((arc) => {
     const dStep = Number(arc.drawStep) || 0;
     if (dStep > maxDrawStep) return;
@@ -397,58 +500,50 @@ export function renderGeometryScene(
     while (diff <= -Math.PI) diff += Math.PI * 2;
     while (diff > Math.PI) diff -= Math.PI * 2;
 
-    const r = arc.radius || 24;
-    const isHl = hlAngles.some((h) => h.vertex === arc.vertex);
+    const isHl = hlAngles.some(
+      (h) =>
+        String(h.vertex) === String(arc.vertex) &&
+        ((String(h.p1) === String(arc.p1) && String(h.p2) === String(arc.p2)) ||
+          (String(h.p1) === String(arc.p2) && String(h.p2) === String(arc.p1)))
+    );
 
     ctx.save();
-    ctx.strokeStyle = isHl ? '#34d399' : COLOR_MAP[arc.color] || COLOR_MAP.accent;
-    ctx.lineWidth = isHl ? 2.4 : 1.7;
+    ctx.strokeStyle = isHl ? '#34d399' : COLOR_MAP[arc.color] || '#38bdf8';
+    ctx.lineWidth = isHl ? 2.6 : 1.7;
     ctx.beginPath();
-    ctx.arc(v.x, v.y, r, a1, a1 + diff, diff < 0);
+    ctx.arc(v.x, v.y, arc.radius || 24, a1, a1 + diff, diff < 0);
     ctx.stroke();
-
-    if (arc.label) {
-      const mid = a1 + diff / 2;
-      const lx = v.x + Math.cos(mid) * (r + 14);
-      const ly = v.y + Math.sin(mid) * (r + 14);
-      ctx.fillStyle = '#fde68a';
-      ctx.font = '600 12px Inter, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(arc.label, lx, ly);
-    }
     ctx.restore();
   });
 
-  // 6. Vẽ điểm & tên điểm
   points.forEach((pt) => {
     const dStep = Number(pt.drawStep) || 0;
     if (dStep > maxDrawStep) return;
     if (typeof pt.hideAtStep === 'number' && maxDrawStep >= pt.hideAtStep) return;
 
-    const isHighlighted = hlPoints.has(pt.id);
+    const isHl = hlPoints.has(String(pt.id));
 
     if (!pt.hideDot) {
       ctx.save();
-      if (isHighlighted) {
-        ctx.shadowColor = '#34d399';
-        ctx.shadowBlur = 10;
-        ctx.fillStyle = '#34d399';
-      } else {
-        ctx.fillStyle = '#f8fafc';
+      if (isHl) {
+        ctx.fillStyle = 'rgba(52, 211, 153, 0.28)';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 8, 0, Math.PI * 2);
+        ctx.fill();
       }
+      ctx.fillStyle = isHl ? '#34d399' : '#f8fafc';
       ctx.beginPath();
-      ctx.arc(pt.x, pt.y, isHighlighted ? 4.4 : 3.2, 0, Math.PI * 2);
+      ctx.arc(pt.x, pt.y, isHl ? 4.2 : 3.2, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
 
     if (showLabels && pt.label) {
       ctx.save();
-      ctx.font = isHighlighted
-        ? '700 14px Inter, system-ui, sans-serif'
-        : '600 13.5px Inter, system-ui, sans-serif';
-      ctx.fillStyle = isHighlighted ? '#6ee7b7' : '#f1f5f9';
+      ctx.font = isHl
+        ? 'bold 14px Inter, system-ui, sans-serif'
+        : '600 13px Inter, system-ui, sans-serif';
+      ctx.fillStyle = isHl ? '#6ee7b7' : '#e2e8f0';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(pt.label, pt.x + (pt.dx || 0), pt.y + (pt.dy || -14));
@@ -456,8 +551,7 @@ export function renderGeometryScene(
     }
   });
 
-  // 7. Vẽ dụng cụ học tập ảo khi đang dựng hình
-  if (mode === 'draw' && drawProgress < 0.99 && toolAnchor && activeStepConfig?.tool) {
+  if (mode === 'draw' && drawProgress < 0.99 && activeStepConfig?.tool && toolAnchor) {
     drawVirtualTool(ctx, activeStepConfig.tool, toolAnchor.x, toolAnchor.y, toolAnchor.angle);
   }
 
@@ -473,9 +567,19 @@ export default function GeometryCanvas({
   drawProgress = 1
 }) {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
+  const [resizeTick, setResizeTick] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setResizeTick((t) => t + 1));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -487,7 +591,6 @@ export default function GeometryCanvas({
 
     canvas.width = Math.round(rect.width * dpr);
     canvas.height = Math.round(rect.height * dpr);
-    ctx.save();
     ctx.scale(dpr, dpr);
 
     renderGeometryScene(ctx, rect.width, rect.height, {
@@ -499,22 +602,67 @@ export default function GeometryCanvas({
       drawProgress,
       zoom,
       showGrid,
-      showLabels
+      showLabels,
+      padTop: 44,
+      padBottom: 16,
+      padX: 22
     });
-
-    ctx.restore();
-  }, [geometry, mode, activeDrawStep, activeSolveStep, activeStepConfig, drawProgress, zoom, showGrid, showLabels]);
+  }, [
+    geometry,
+    mode,
+    activeDrawStep,
+    activeSolveStep,
+    activeStepConfig,
+    drawProgress,
+    zoom,
+    showGrid,
+    showLabels,
+    resizeTick
+  ]);
 
   return (
-    <div className="relative flex h-full min-h-[340px] w-full flex-col overflow-hidden rounded-xl border border-slate-800 bg-[#0b1120]">
-      <canvas ref={canvasRef} className="h-full w-full flex-1" />
+    <div ref={containerRef} className="relative h-full w-full select-none overflow-hidden bg-[#0b1120]">
+      <canvas ref={canvasRef} className="block h-full w-full" />
 
-      <div className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-lg border border-slate-700/80 bg-slate-900/90 p-1 backdrop-blur">
+      <div className="pointer-events-none absolute left-2.5 top-2.5 max-w-[68%] rounded-lg border border-slate-700/70 bg-slate-900/85 px-2.5 py-1.5 backdrop-blur-md">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+          {mode === 'solve'
+            ? 'HOÀN TẤT HÌNH VẼ'
+            : `BƯỚC DỰNG HÌNH ${activeDrawStep + 1}`}
+        </div>
+        <div className="mt-0.5 text-[11px] leading-tight text-slate-200 line-clamp-1">
+          {mode === 'solve'
+            ? 'Hình vẽ hoàn thiện.'
+            : activeStepConfig?.caption || 'Đang dựng hình...'}
+        </div>
+      </div>
+
+      <div className="absolute right-2.5 top-2.5 flex items-center gap-0.5 rounded-lg border border-slate-700/70 bg-slate-900/85 p-1 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => setShowLabels((v) => !v)}
+          title="Ẩn/hiện tên điểm"
+          className={`rounded p-1 transition ${
+            showLabels ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Tag className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowGrid((v) => !v)}
+          title="Ẩn/hiện lưới tọa độ"
+          className={`rounded p-1 transition ${
+            showGrid ? 'bg-slate-800 text-sky-400' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Grid className="h-3.5 w-3.5" />
+        </button>
         <button
           type="button"
           onClick={() => setZoom((z) => Math.min(1.6, Number((z + 0.15).toFixed(2))))}
           title="Phóng to"
-          className="rounded p-1 text-slate-300 hover:bg-slate-800 hover:text-white"
+          className="rounded p-1 text-slate-300 transition hover:bg-slate-800 hover:text-white"
         >
           <ZoomIn className="h-3.5 w-3.5" />
         </button>
@@ -522,34 +670,17 @@ export default function GeometryCanvas({
           type="button"
           onClick={() => setZoom((z) => Math.max(0.65, Number((z - 0.15).toFixed(2))))}
           title="Thu nhỏ"
-          className="rounded p-1 text-slate-300 hover:bg-slate-800 hover:text-white"
+          className="rounded p-1 text-slate-300 transition hover:bg-slate-800 hover:text-white"
         >
           <ZoomOut className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           onClick={() => setZoom(1)}
-          title="Khôi phục tỷ lệ 100%"
-          className="rounded p-1 text-slate-300 hover:bg-slate-800 hover:text-white"
+          title="Vừa khung hình (100%)"
+          className="rounded p-1 text-slate-300 transition hover:bg-slate-800 hover:text-white"
         >
           <RotateCcw className="h-3.5 w-3.5" />
-        </button>
-        <div className="mx-0.5 h-3.5 w-[1px] bg-slate-700" />
-        <button
-          type="button"
-          onClick={() => setShowGrid((v) => !v)}
-          title="Bật/tắt lưới tọa độ"
-          className={`rounded p-1 ${showGrid ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-white'}`}
-        >
-          <Grid className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowLabels((v) => !v)}
-          title="Bật/tắt tên điểm"
-          className={`rounded p-1 ${showLabels ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-400 hover:text-white'}`}
-        >
-          <Tag className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
