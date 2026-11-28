@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen,
   FolderArchive,
@@ -32,6 +32,7 @@ import {
   buildUnifiedAudioPackage
 } from './services/githubStorageService.js';
 import { exportLectureVideo } from './services/videoExporter.js';
+import { buildEffectiveTimeline, resolveVisualStateAtTime } from './services/timelineHelper.js';
 import savedSamples from './data/savedSamples.json';
 
 const API_KEY_STORAGE = 'toan_hinh_gemini_api_key';
@@ -166,6 +167,7 @@ export default function App() {
   const [catalog, setCatalog] = useState([]);
   const [lesson, setLesson] = useState(DEFAULT_FALLBACK_LESSON);
   const [audioUrl, setAudioUrl] = useState('');
+  const [resolvedAudioUrl, setResolvedAudioUrl] = useState('');
 
   const [mode, setMode] = useState('draw');
   const [drawStepIdx, setDrawStepIdx] = useState(0);
@@ -179,6 +181,7 @@ export default function App() {
 
   const [audioCurrentSec, setAudioCurrentSec] = useState(0);
   const [audioDurationSec, setAudioDurationSec] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
 
   const [isExportingVideo, setIsExportingVideo] = useState(false);
   const [videoProgressPct, setVideoProgressPct] = useState(0);
@@ -193,6 +196,10 @@ export default function App() {
   const [ghTestStatus, setGhTestStatus] = useState('');
 
   const audioRef = useRef(null);
+  const progressBarRef = useRef(null);
+  const isScrubbingRef = useRef(false);
+  const seekLockUntilRef = useRef(0);
+  const ownedBlobUrlRef = useRef('');
   const zipInputRef = useRef(null);
   const solutionScrollRef = useRef(null);
   const activeStepRef = useRef(null);
@@ -202,6 +209,50 @@ export default function App() {
   const totalDrawSteps = drawingSteps.length;
   const totalSolveSteps = solutionSteps.length;
   const totalTimelineSteps = Math.max(1, totalDrawSteps + totalSolveSteps);
+
+  // Nạp âm thanh tĩnh thành Blob URL trong RAM để tua (seek) tức thì, không bao giờ nhảy về 0:00
+  useEffect(() => {
+    let cancelled = false;
+
+    if (ownedBlobUrlRef.current) {
+      URL.revokeObjectURL(ownedBlobUrlRef.current);
+      ownedBlobUrlRef.current = '';
+    }
+
+    if (!audioUrl) {
+      setResolvedAudioUrl('');
+      return;
+    }
+
+    if (audioUrl.startsWith('blob:') || audioUrl.startsWith('data:')) {
+      setResolvedAudioUrl(audioUrl);
+      return;
+    }
+
+    setResolvedAudioUrl(audioUrl);
+    fetch(audioUrl)
+      .then((res) => (res.ok ? res.blob() : null))
+      .then((blob) => {
+        if (cancelled || !blob) return;
+        const localBlobUrl = URL.createObjectURL(blob);
+        ownedBlobUrlRef.current = localBlobUrl;
+        setResolvedAudioUrl(localBlobUrl);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [audioUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (ownedBlobUrlRef.current) {
+        URL.revokeObjectURL(ownedBlobUrlRef.current);
+        ownedBlobUrlRef.current = '';
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -229,6 +280,7 @@ export default function App() {
     setIsPlaying(false);
     setAudioCurrentSec(0);
     setAudioDurationSec(0);
+    seekLockUntilRef.current = 0;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -251,6 +303,21 @@ export default function App() {
       setAudioUrl('');
     }
   };
+
+  const syncVisualStateToTime = useCallback(
+    (targetSec, durationOverride) => {
+      const dur =
+        Number.isFinite(durationOverride) && durationOverride > 0
+          ? durationOverride
+          : audioDurationSec;
+      const st = resolveVisualStateAtTime(lesson, targetSec, dur);
+      setMode(st.mode);
+      setDrawStepIdx(st.drawIdx);
+      setSolveStepIdx(st.solveIdx);
+      setDrawProgress(st.drawProg);
+    },
+    [lesson, audioDurationSec]
+  );
 
   const handleSelectCatalogItem = async (item) => {
     setShowCatalogModal(false);
@@ -308,51 +375,38 @@ export default function App() {
     audio.playbackRate = playbackRate;
     audio.muted = isMuted;
     audio.volume = volume;
-  }, [playbackRate, isMuted, volume, audioUrl]);
+  }, [playbackRate, isMuted, volume, resolvedAudioUrl]);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !audioUrl) return;
-
-    const timeline = Array.isArray(lesson?.audioTimeline) ? lesson.audioTimeline : [];
+    if (!audio || !resolvedAudioUrl) return;
 
     const onLoadedMetadata = () => {
-      if (Number.isFinite(audio.duration)) {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
         setAudioDurationSec(audio.duration);
+        // Nếu người dùng đã tua trước khi metadata tải xong, khôi phục đúng vị trí đã chọn
+        if (audioCurrentSec > 0.05 && Math.abs(audio.currentTime - audioCurrentSec) > 0.25) {
+          audio.currentTime = Math.min(audio.duration - 0.05, audioCurrentSec);
+        }
       }
     };
 
     const onTimeUpdate = () => {
+      if (isScrubbingRef.current || audio.seeking) return;
+      if (performance.now() < seekLockUntilRef.current) return;
+
       const t = audio.currentTime;
+      const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : audioDurationSec;
       setAudioCurrentSec(t);
-      if (Number.isFinite(audio.duration) && audio.duration > 0) {
-        setAudioDurationSec(audio.duration);
+      if (dur > 0 && dur !== audioDurationSec) {
+        setAudioDurationSec(dur);
       }
-
-      if (timeline.length === 0) return;
-      const hit =
-        timeline.find((item) => t >= item.startSec && t < item.endSec) ||
-        timeline[timeline.length - 1];
-      if (!hit) return;
-
-      const idx = hit.stepIndex;
-      if (idx < totalDrawSteps) {
-        setMode('draw');
-        setDrawStepIdx(idx);
-        const span = Math.max(0.2, hit.endSec - hit.startSec);
-        setDrawProgress(Math.min(1, Math.max(0.1, (t - hit.startSec) / (span * 0.75))));
-      } else {
-        const sIdx = idx - totalDrawSteps;
-        setMode('solve');
-        setDrawStepIdx(Math.max(0, totalDrawSteps - 1));
-        setDrawProgress(1);
-        setSolveStepIdx(Math.min(totalSolveSteps - 1, Math.max(0, sIdx)));
-      }
+      syncVisualStateToTime(t, dur);
     };
 
     const onEnded = () => {
       setIsPlaying(false);
-      setMode('solve');
+      setMode(totalSolveSteps > 0 ? 'solve' : 'draw');
       setDrawProgress(1);
       if (totalSolveSteps > 0) setSolveStepIdx(totalSolveSteps - 1);
     };
@@ -365,10 +419,10 @@ export default function App() {
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [audioUrl, lesson, totalDrawSteps, totalSolveSteps]);
+  }, [resolvedAudioUrl, audioDurationSec, audioCurrentSec, totalSolveSteps, syncVisualStateToTime]);
 
   useEffect(() => {
-    if (!isPlaying || audioUrl) return;
+    if (!isPlaying || resolvedAudioUrl) return;
 
     const intervalMs = 60;
     const stepDurationMs = 2600 / playbackRate;
@@ -405,7 +459,7 @@ export default function App() {
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [isPlaying, audioUrl, mode, drawStepIdx, solveStepIdx, totalDrawSteps, totalSolveSteps, playbackRate]);
+  }, [isPlaying, resolvedAudioUrl, mode, drawStepIdx, solveStepIdx, totalDrawSteps, totalSolveSteps, playbackRate]);
 
   // Tự động cuộn khung Lời giải theo bước đang thuyết minh
   useEffect(() => {
@@ -424,6 +478,31 @@ export default function App() {
     }
   }, [mode, solveStepIdx, showAllSolution]);
 
+  const seekToSecond = useCallback(
+    (targetSec) => {
+      const audio = audioRef.current;
+      const dur =
+        audio && Number.isFinite(audio.duration) && audio.duration > 0
+          ? audio.duration
+          : audioDurationSec;
+
+      if (dur > 0) {
+        const clampedSec = Math.max(0, Math.min(Math.max(0, dur - 0.05), targetSec));
+        seekLockUntilRef.current = performance.now() + 350;
+        setAudioCurrentSec(clampedSec);
+        syncVisualStateToTime(clampedSec, dur);
+        if (audio && resolvedAudioUrl && audio.readyState >= 1) {
+          try {
+            audio.currentTime = clampedSec;
+          } catch {
+            // Sẽ tự đồng bộ trong onLoadedMetadata
+          }
+        }
+      }
+    },
+    [audioDurationSec, resolvedAudioUrl, syncVisualStateToTime]
+  );
+
   const jumpToGlobalStep = (globalIdx) => {
     const clamped = Math.max(0, Math.min(totalTimelineSteps - 1, globalIdx));
     if (clamped < totalDrawSteps) {
@@ -438,11 +517,14 @@ export default function App() {
       setSolveStepIdx(clamped - totalDrawSteps);
     }
 
-    const timeline = Array.isArray(lesson?.audioTimeline) ? lesson.audioTimeline : [];
-    const entry = timeline.find((item) => item.stepIndex === clamped);
-    if (audioRef.current && audioUrl && entry) {
-      audioRef.current.currentTime = entry.startSec;
-      setAudioCurrentSec(entry.startSec);
+    const dur =
+      audioRef.current && Number.isFinite(audioRef.current.duration) && audioRef.current.duration > 0
+        ? audioRef.current.duration
+        : audioDurationSec;
+    const effectiveTimeline = buildEffectiveTimeline(lesson, dur);
+    const entry = effectiveTimeline.find((item) => item.stepIndex === clamped);
+    if (resolvedAudioUrl && entry) {
+      seekToSecond(entry.startSec);
     }
   };
 
@@ -453,18 +535,36 @@ export default function App() {
       return;
     }
 
-    setIsPlaying(true);
-    if (audioRef.current && audioUrl) {
-      audioRef.current.play().catch(() => {});
+    if (audioRef.current && resolvedAudioUrl) {
+      const audio = audioRef.current;
+      const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : audioDurationSec;
+      // Nếu đã chạy hết bài thì phát lại từ đầu, ngược lại phát tiếp ngay tại vị trí vừa tua
+      if (dur > 0 && audioCurrentSec >= dur - 0.12) {
+        seekToSecond(0);
+      } else if (Math.abs(audio.currentTime - audioCurrentSec) > 0.2) {
+        try {
+          audio.currentTime = audioCurrentSec;
+        } catch {}
+      }
+      setIsPlaying(true);
+      audio.play().catch(() => {
+        setIsPlaying(false);
+      });
+      return;
     }
+
+    setIsPlaying(true);
   };
 
   const handleReset = () => {
     setIsPlaying(false);
+    seekLockUntilRef.current = performance.now() + 300;
     setAudioCurrentSec(0);
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      try {
+        audioRef.current.currentTime = 0;
+      } catch {}
     }
     setMode(totalDrawSteps > 0 ? 'draw' : 'solve');
     setDrawStepIdx(0);
@@ -478,19 +578,47 @@ export default function App() {
   const handlePrevStep = () => jumpToGlobalStep(currentGlobalStep - 1);
   const handleNextStep = () => jumpToGlobalStep(currentGlobalStep + 1);
 
-  const handleProgressBarClick = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+  const scrubToClientX = useCallback(
+    (clientX) => {
+      const bar = progressBarRef.current;
+      if (!bar) return;
+      const rect = bar.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
 
-    if (audioRef.current && audioUrl && audioDurationSec > 0) {
-      const targetSec = ratio * audioDurationSec;
-      audioRef.current.currentTime = targetSec;
-      setAudioCurrentSec(targetSec);
-      return;
-    }
+      const dur =
+        audioRef.current && Number.isFinite(audioRef.current.duration) && audioRef.current.duration > 0
+          ? audioRef.current.duration
+          : audioDurationSec;
 
-    const targetStep = Math.min(totalTimelineSteps - 1, Math.floor(ratio * totalTimelineSteps));
-    jumpToGlobalStep(targetStep);
+      if (resolvedAudioUrl && dur > 0) {
+        seekToSecond(ratio * dur);
+        return;
+      }
+
+      const targetStep = Math.min(totalTimelineSteps - 1, Math.floor(ratio * totalTimelineSteps));
+      jumpToGlobalStep(targetStep);
+    },
+    [audioDurationSec, resolvedAudioUrl, seekToSecond, totalTimelineSteps]
+  );
+
+  const handleProgressPointerDown = (e) => {
+    e.preventDefault();
+    isScrubbingRef.current = true;
+    setIsScrubbing(true);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    scrubToClientX(e.clientX);
+  };
+
+  const handleProgressPointerMove = (e) => {
+    if (!isScrubbingRef.current) return;
+    scrubToClientX(e.clientX);
+  };
+
+  const handleProgressPointerUp = (e) => {
+    if (!isScrubbingRef.current) return;
+    scrubToClientX(e.clientX);
+    isScrubbingRef.current = false;
+    setIsScrubbing(false);
   };
 
   const handleExportVideo = async () => {
@@ -512,7 +640,7 @@ export default function App() {
     try {
       await exportLectureVideo({
         lesson,
-        audioUrl,
+        audioUrl: resolvedAudioUrl || audioUrl,
         onProgress: setVideoProgressPct,
         signal: controller.signal
       });
@@ -547,16 +675,16 @@ export default function App() {
   }, [solutionSteps, showAllSolution, mode, solveStepIdx]);
 
   const progressPercent = useMemo(() => {
-    if (audioUrl && audioDurationSec > 0) {
+    if (resolvedAudioUrl && audioDurationSec > 0) {
       return Math.min(100, Math.max(0, (audioCurrentSec / audioDurationSec) * 100));
     }
     const subProg = mode === 'draw' ? drawProgress : 1;
     return Math.min(100, Math.max(0, ((currentGlobalStep + subProg) / totalTimelineSteps) * 100));
-  }, [audioUrl, audioDurationSec, audioCurrentSec, mode, drawProgress, currentGlobalStep, totalTimelineSteps]);
+  }, [resolvedAudioUrl, audioDurationSec, audioCurrentSec, mode, drawProgress, currentGlobalStep, totalTimelineSteps]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0b1120] text-slate-100 lg:h-screen lg:overflow-hidden">
-      {audioUrl && <audio ref={audioRef} src={audioUrl} preload="auto" />}
+      {resolvedAudioUrl && <audio ref={audioRef} src={resolvedAudioUrl} preload="auto" />}
 
       {/* Header gọn trên cùng */}
       <header className="shrink-0 border-b border-slate-800/90 bg-[#0f172a] px-3 py-2 sm:px-4">
@@ -776,7 +904,7 @@ export default function App() {
 
       {/* Cụm điều khiển cố định phía dưới gồm 3 phần theo đúng bố cục yêu cầu:
           1. Lời thuyết minh
-          2. Thanh tiến trình
+          2. Thanh tiến trình (hỗ trợ bấm & kéo tua mượt mà, không nhảy về đầu)
           3. Nút "Tự động giảng", Tốc độ, loa, ... Nút "Tải video" */}
       <footer className="shrink-0 border-t border-slate-800 bg-[#0f172a] px-3 py-2 sm:px-4">
         <div className="mx-auto flex max-w-[1680px] flex-col gap-1.5">
@@ -791,38 +919,54 @@ export default function App() {
             </p>
           </div>
 
-          {/* 2. Thanh tiến trình */}
+          {/* 2. Thanh tiến trình (bấm hoặc kéo trượt để tua chính xác) */}
           <div className="flex items-center gap-3">
             <span className="shrink-0 font-mono text-[11px] text-slate-400">
-              {audioUrl && audioDurationSec > 0
+              {resolvedAudioUrl && audioDurationSec > 0
                 ? formatTimeMMSS(audioCurrentSec)
                 : `Bước ${currentGlobalStep + 1}`}
             </span>
 
             <div
-              onClick={handleProgressBarClick}
-              title="Bấm để tua nhanh đến vị trí bài giảng"
-              className="group relative h-2.5 flex-1 cursor-pointer overflow-hidden rounded-full bg-slate-800"
+              ref={progressBarRef}
+              onPointerDown={handleProgressPointerDown}
+              onPointerMove={handleProgressPointerMove}
+              onPointerUp={handleProgressPointerUp}
+              onPointerCancel={handleProgressPointerUp}
+              title="Bấm hoặc kéo để tua nhanh đến vị trí bài giảng"
+              className="group relative flex h-4 flex-1 cursor-pointer touch-none items-center"
             >
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 transition-all duration-150"
-                style={{ width: `${progressPercent}%` }}
+              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 ${
+                    isScrubbing ? '' : 'transition-all duration-100'
+                  }`}
+                  style={{ width: `${progressPercent}%` }}
+                />
+                {/* Các vạch chia mốc từng bước */}
+                {Array.from({ length: Math.max(0, totalTimelineSteps - 1) }).map((_, i) => {
+                  const leftPct = ((i + 1) / totalTimelineSteps) * 100;
+                  return (
+                    <span
+                      key={i}
+                      style={{ left: `${leftPct}%` }}
+                      className="pointer-events-none absolute top-0 h-full w-[1.5px] bg-slate-950/80"
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Nút kéo tua tròn hiển thị khi rê chuột hoặc đang kéo */}
+              <span
+                style={{ left: `${progressPercent}%` }}
+                className={`pointer-events-none absolute h-3.5 w-3.5 -translate-x-1/2 rounded-full border-2 border-white bg-emerald-400 shadow transition-opacity ${
+                  isScrubbing ? 'scale-110 opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
               />
-              {/* Các vạch chia mốc từng bước */}
-              {Array.from({ length: Math.max(0, totalTimelineSteps - 1) }).map((_, i) => {
-                const leftPct = ((i + 1) / totalTimelineSteps) * 100;
-                return (
-                  <span
-                    key={i}
-                    style={{ left: `${leftPct}%` }}
-                    className="pointer-events-none absolute top-0 h-full w-[1.5px] bg-slate-950/80"
-                  />
-                );
-              })}
             </div>
 
             <span className="shrink-0 font-mono text-[11px] text-slate-400">
-              {audioUrl && audioDurationSec > 0
+              {resolvedAudioUrl && audioDurationSec > 0
                 ? formatTimeMMSS(audioDurationSec)
                 : `${totalTimelineSteps} bước`}
             </span>
